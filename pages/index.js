@@ -1086,3 +1086,282 @@ Exemples :
     </div>
   );
 }
+
+
+// Dans votre MusicAIInterface, ajoutez cette section après l'affichage du résultat
+
+{result && result.includes('Web Audio Prêt') && (
+  <div style={{
+    background: 'rgba(139, 92, 246, 0.2)',
+    border: '1px solid rgba(139, 92, 246, 0.4)',
+    borderRadius: '15px',
+    padding: '20px',
+    marginTop: '20px'
+  }}>
+    <h4 style={{
+      color: '#a78bfa',
+      fontWeight: '600',
+      marginBottom: '15px',
+      fontSize: '1.1rem',
+      textAlign: 'center'
+    }}>
+      🎵 Votre musique est prête !
+    </h4>
+    
+    <div style={{
+      display: 'flex',
+      gap: '15px',
+      justifyContent: 'center',
+      flexWrap: 'wrap'
+    }}>
+      <button 
+        onClick={() => playGeneratedMusic(style, prompt, duration)}
+        style={{
+          background: 'linear-gradient(45deg, #10b981, #34d399)',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '25px',
+          color: 'white',
+          fontWeight: '600',
+          cursor: 'pointer',
+          fontSize: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        ▶️ Écouter
+      </button>
+      
+      <button 
+        onClick={() => downloadGeneratedMusic(style, prompt, duration)}
+        style={{
+          background: 'linear-gradient(45deg, #3b82f6, #1d4ed8)',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '25px',
+          color: 'white',
+          fontWeight: '600',
+          cursor: 'pointer',
+          fontSize: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        ⬇️ Télécharger WAV
+      </button>
+    </div>
+    
+    <div style={{
+      textAlign: 'center',
+      marginTop: '10px',
+      color: 'rgba(255, 255, 255, 0.7)',
+      fontSize: '0.9rem'
+    }}>
+      Musique générée en temps réel dans votre navigateur
+    </div>
+  </div>
+)}
+
+// Et ajoutez ces fonctions JavaScript à la fin du composant MusicAIInterface
+
+const playGeneratedMusic = (style, prompt, duration) => {
+  try {
+    // Créer le contexte audio
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const sampleRate = 44100;
+    const dur = parseInt(duration) || 30;
+    const bufferSize = sampleRate * dur;
+
+    // Paramètres basés sur l'analyse
+    const isMysterious = prompt.toLowerCase().includes('mystérieux');
+    const isSpatial = prompt.toLowerCase().includes('spatial');
+    
+    let baseFreq = 110;
+    let tempo = 120;
+    
+    if (style === 'electronic') {
+      baseFreq = isMysterious ? 80 : 120;
+      tempo = isMysterious ? 90 : 128;
+    }
+
+    // Créer le buffer audio
+    const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Générer les samples
+    for (let i = 0; i < bufferSize; i++) {
+      const time = i / sampleRate;
+      let sample = 0;
+
+      // Oscillateur principal
+      sample += Math.sin(2 * Math.PI * baseFreq * time) * 0.3;
+      
+      // Harmoniques pour texture electronic
+      if (style === 'electronic') {
+        sample += Math.sin(2 * Math.PI * baseFreq * 2 * time) * 0.15;
+        sample += Math.sin(2 * Math.PI * baseFreq * 3 * time) * 0.1;
+      }
+
+      // Modulation mystérieuse
+      if (isMysterious) {
+        const lfo = Math.sin(2 * Math.PI * 0.5 * time);
+        sample *= (1 + lfo * 0.3);
+      }
+
+      // Effet spatial avec delay
+      if (isSpatial && time > 0.1) {
+        const delayedSample = Math.sin(2 * Math.PI * baseFreq * (time - 0.1)) * 0.2;
+        sample += delayedSample;
+      }
+
+      // Envelope simple
+      let envelope = 1;
+      const beatLength = sampleRate / (tempo / 60);
+      const beatPosition = (i % beatLength) / beatLength;
+      
+      if (beatPosition < 0.1) {
+        envelope = beatPosition / 0.1;
+      } else if (beatPosition > 0.8) {
+        envelope = (1 - beatPosition) / 0.2;
+      }
+
+      data[i] = sample * envelope * 0.5;
+    }
+
+    // Jouer l'audio
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    
+    // Ajouter des effets
+    const gainNode = audioContext.createGain();
+    const filterNode = audioContext.createBiquadFilter();
+    
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = isMysterious ? 800 : 2000;
+    
+    source.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    source.start();
+    
+    // Notification de lecture
+    alert('🎵 Lecture de votre composition en cours ! Durée: ' + dur + ' secondes');
+    
+  } catch (error) {
+    alert('❌ Erreur audio: ' + error.message + '\nVotre navigateur doit supporter Web Audio API');
+  }
+};
+
+const downloadGeneratedMusic = (style, prompt, duration) => {
+  try {
+    // Même génération que pour la lecture
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const sampleRate = 44100;
+    const dur = parseInt(duration) || 30;
+    const bufferSize = sampleRate * dur;
+
+    const isMysterious = prompt.toLowerCase().includes('mystérieux');
+    const isSpatial = prompt.toLowerCase().includes('spatial');
+    
+    let baseFreq = style === 'electronic' ? (isMysterious ? 80 : 120) : 110;
+    let tempo = style === 'electronic' ? (isMysterious ? 90 : 128) : 120;
+
+    const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    // Génération identique à la lecture
+    for (let i = 0; i < bufferSize; i++) {
+      const time = i / sampleRate;
+      let sample = 0;
+
+      sample += Math.sin(2 * Math.PI * baseFreq * time) * 0.3;
+      
+      if (style === 'electronic') {
+        sample += Math.sin(2 * Math.PI * baseFreq * 2 * time) * 0.15;
+        sample += Math.sin(2 * Math.PI * baseFreq * 3 * time) * 0.1;
+      }
+
+      if (isMysterious) {
+        const lfo = Math.sin(2 * Math.PI * 0.5 * time);
+        sample *= (1 + lfo * 0.3);
+      }
+
+      if (isSpatial && time > 0.1) {
+        const delayedSample = Math.sin(2 * Math.PI * baseFreq * (time - 0.1)) * 0.2;
+        sample += delayedSample;
+      }
+
+      let envelope = 1;
+      const beatLength = sampleRate / (tempo / 60);
+      const beatPosition = (i % beatLength) / beatLength;
+      
+      if (beatPosition < 0.1) {
+        envelope = beatPosition / 0.1;
+      } else if (beatPosition > 0.8) {
+        envelope = (1 - beatPosition) / 0.2;
+      }
+
+      data[i] = sample * envelope * 0.5;
+    }
+
+    // Conversion en WAV
+    const wav = audioBufferToWav(buffer);
+    const blob = new Blob([wav], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    
+    // Téléchargement
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `musique-${style}-${Date.now()}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert('🎵 Téléchargement démarré ! Fichier: musique-' + style + '-' + Date.now() + '.wav');
+    
+  } catch (error) {
+    alert('❌ Erreur téléchargement: ' + error.message);
+  }
+};
+
+// Fonction utilitaire pour conversion WAV
+const audioBufferToWav = (buffer) => {
+  const length = buffer.length;
+  const arrayBuffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(arrayBuffer);
+  
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+  
+  // Header WAV
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * 2, true);
+  
+  // Données audio
+  const channelData = buffer.getChannelData(0);
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    view.setInt16(offset, channelData[i] * 0x7FFF, true);
+    offset += 2;
+  }
+  
+  return arrayBuffer;
+};
