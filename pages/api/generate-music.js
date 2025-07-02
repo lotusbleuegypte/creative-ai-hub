@@ -9,17 +9,30 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt requis' });
   }
 
-  if (!process.env.REPLICATE_API_TOKEN) {
-    return res.status(500).json({ error: 'Token API Replicate manquant dans les variables d\'environnement' });
+  // Debug: vérifier toutes les variables d'environnement disponibles
+  console.log('Variables disponibles:', Object.keys(process.env).filter(key => key.includes('REPLICATE')));
+  console.log('REPLICATE_API_TOKEN exists:', !!process.env.REPLICATE_API_TOKEN);
+
+  const apiToken = process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_TOKEN || process.env.replicate_api_token;
+
+  if (!apiToken) {
+    return res.status(500).json({ 
+      error: 'Token API Replicate manquant',
+      debug: 'Variables disponibles: ' + Object.keys(process.env).filter(key => key.toLowerCase().includes('replicate')).join(', ')
+    });
   }
 
   try {
     const musicPrompt = `${style} music, ${prompt}`;
     
+    console.log('Génération musicale avec prompt:', musicPrompt);
+    console.log('Token utilisé:', apiToken.substring(0, 10) + '...');
+
+    // Première tentative : créer la prédiction
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+        'Authorization': `Token ${apiToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -27,7 +40,7 @@ export default async function handler(req, res) {
         input: {
           model_version: "stereo-large",
           prompt: musicPrompt,
-          duration: duration || 30,
+          duration: parseInt(duration) || 30,
           temperature: 0.8,
           top_k: 250,
           top_p: 0.0,
@@ -37,65 +50,4 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Replicate API Error: ${error.detail || 'Erreur inconnue'}`);
-    }
-
-    const prediction = await response.json();
-    let result = prediction;
-    let attempts = 0;
-    const maxAttempts = 60;
-
-    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-        headers: {
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-        }
-      });
-
-      if (statusResponse.ok) {
-        result = await statusResponse.json();
-      }
-      attempts++;
-    }
-
-    if (result.status === 'failed') {
-      throw new Error(`Génération échouée: ${result.error || 'Erreur inconnue'}`);
-    }
-
-    if (result.status !== 'succeeded') {
-      throw new Error('Timeout: La génération prend trop de temps');
-    }
-
-    const musicResult = `🎵 **Composition générée avec succès !**
-
-**🎼 Détails de la composition :**
-- **Style :** ${style}
-- **Inspiration :** ${prompt}
-- **Durée :** ${duration || 30} secondes
-- **Modèle :** MusicGen Stereo Large
-- **Qualité :** HD Stéréo
-
-**🎧 Votre musique est prête !**
-${result.output ? `🔗 **Lien de téléchargement :** ${result.output}` : ''}
-
-**💡 Conseils :**
-- Écoutez avec un bon casque pour apprécier la qualité stéréo
-- Vous pouvez utiliser cette musique dans vos projets créatifs
-- Essayez différents styles pour des ambiances variées !`;
-
-    res.status(200).json({ 
-      result: musicResult,
-      audio_url: result.output
-    });
-
-  } catch (error) {
-    console.error('Erreur génération musicale:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de la génération musicale',
-      details: error.message
-    });
-  }
-}
+      const errorText = await respo
