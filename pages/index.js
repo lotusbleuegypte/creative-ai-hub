@@ -560,3 +560,160 @@ function TextAIInterface({ onGenerate, isGenerating, result }) {
     </div>
   );
 }
+
+
+function MusicAIInterface({ onGenerate, isGenerating, result }) {
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('electronic');
+  const [duration, setDuration] = useState(30);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Style musical
+        </label>
+        <select 
+          value={style} 
+          onChange={(e) => setStyle(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="electronic" style={{background: '#1f2937', color: 'white'}}>Électronique</option>
+          <option value="pop" style={{background: '#1f2937', color: 'white'}}>Pop</option>
+          <option value="rock" style={{background: '#1f2937', color: 'white'}}>Rock</option>
+          <option value="jazz" style={{background: '#1f2937', color: 'white'}}>Jazz</option>
+          <option value="classical" style={{background: '#1f2937', color: 'white'}}>Classique</option>
+          <option value="hip-hop" style={{background: '#1f2937', color: 'white'}}>Hip-Hop</option>
+          <option value="ambient" style={{background: '#1f2937', color: 'white'}}>Ambient</option>
+          <option value="folk" style={{background: '#1f2937', color: 'white'}}>Folk</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Description/Ambiance
+        </label>
+        <input 
+          type="text"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Ex: mélancolique, énergique, romantique, mystérieux..."
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        />
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Durée : {duration} secondes
+        </label>
+        <input 
+          type="range"
+          min="15"
+          max="60"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          style={{
+            width: '100%',
+            height: '8px',
+            borderRadius: '5px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            outline: 'none'
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: '0.9rem',
+          marginTop: '5px'
+        }}>
+          <span>15s</span>
+          <span>60s</span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => onGenerate({ prompt, style, duration })}
+        disabled={isGenerating || !prompt}
+        style={{
+          width: '100%',
+          background: isGenerating || !prompt 
+            ? 'rgba(108, 117, 125, 0.5)' 
+            : 'linear-gradient(45deg, #8b5cf6, #ec4899)',
+          border: 'none',
+          padding: '18px',
+          borderRadius: '10px',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          cursor: isGenerating || !prompt ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        {isGenerating ? '🎵 Composition en cours... (peut prendre 2-5 min)' : '🎼 Générer la musique'}
+      </button>
+
+      {result && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '10px',
+          padding: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <h4 style={{
+            color: 'white',
+            fontWeight: '600',
+            marginBottom: '15px',
+            fontSize: '1.1rem'
+          }}>
+            🎵 Votre composition :
+          </h4>
+          <div style={{
+            color: '#e5e5e5',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.6',
+            fontSize: '1rem'
+          }}>
+            {result}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
