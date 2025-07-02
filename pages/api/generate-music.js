@@ -14,12 +14,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Construire le prompt musical
     const musicPrompt = `${style} music, ${prompt}`;
     
-    console.log('Génération musicale avec prompt:', musicPrompt);
-
-    // Appel à l'API Replicate pour MusicGen
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -46,14 +42,12 @@ export default async function handler(req, res) {
     }
 
     const prediction = await response.json();
-
-    // Attendre que la génération soit terminée
     let result = prediction;
     let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max
+    const maxAttempts = 60;
 
     while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Attendre 5 secondes
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
         headers: {
@@ -75,33 +69,26 @@ export default async function handler(req, res) {
       throw new Error('Timeout: La génération prend trop de temps');
     }
 
-    // Formatage du résultat
     const musicResult = `🎵 **Composition générée avec succès !**
 
 **🎼 Détails de la composition :**
-• **Style :** ${style}
-• **Inspiration :** ${prompt}
-• **Durée :** ${duration || 30} secondes
-• **Modèle :** MusicGen Stereo Large
-• **Qualité :** HD Stéréo
+- **Style :** ${style}
+- **Inspiration :** ${prompt}
+- **Durée :** ${duration || 30} secondes
+- **Modèle :** MusicGen Stereo Large
+- **Qualité :** HD Stéréo
 
 **🎧 Votre musique est prête !**
 ${result.output ? `🔗 **Lien de téléchargement :** ${result.output}` : ''}
 
 **💡 Conseils :**
-• Écoutez avec un bon casque pour apprécier la qualité stéréo
-• Vous pouvez utiliser cette musique dans vos projets créatifs
-• Essayez différents styles pour des ambiances variées !`;
+- Écoutez avec un bon casque pour apprécier la qualité stéréo
+- Vous pouvez utiliser cette musique dans vos projets créatifs
+- Essayez différents styles pour des ambiances variées !`;
 
     res.status(200).json({ 
       result: musicResult,
-      audio_url: result.output,
-      metadata: {
-        style,
-        prompt,
-        duration: duration || 30,
-        model: 'MusicGen Stereo Large'
-      }
+      audio_url: result.output
     });
 
   } catch (error) {
