@@ -18,81 +18,135 @@ export default async function handler(req, res) {
   }
 
   try {
-    const musicPrompt = style + ' music, ' + prompt;
+    // Étape 1 : Tester la connectivité de base
+    console.log('=== TEST 1: Connectivite de base ===');
     
-    console.log('Demarrage generation musicale:', musicPrompt);
-
-    // Créer la prédiction Replicate
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Token ' + apiToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        version: "b05b1dff1d8c6dc63d14b0cdb42135378dcb87f6373b0d3d341ede46e59e2dae",
-        input: {
-          model_version: "stereo-large",
-          prompt: musicPrompt,
-          duration: parseInt(duration) || 30,
-          temperature: 0.8,
-          top_k: 250,
-          top_p: 0.0,
-          classifier_free_guidance: 3.0,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Erreur Replicate:', response.status, errorText);
-      
-      // Message d'erreur plus user-friendly
-      let userError = 'Erreur de l\'API de generation musicale';
-      if (response.status === 401) {
-        userError = 'Token Replicate invalide ou expire';
-      } else if (response.status === 402) {
-        userError = 'Credit Replicate insuffisant';
-      } else if (response.status === 429) {
-        userError = 'Trop de requetes, reessayez dans quelques minutes';
-      }
-      
-      throw new Error(userError + ' (Status: ' + response.status + ')');
+    let testResult = '';
+    try {
+      const testResponse = await fetch('https://httpbin.org/status/200');
+      testResult = 'Internet: OK (' + testResponse.status + ')';
+    } catch (e) {
+      testResult = 'Internet: ERREUR - ' + e.message;
     }
 
-    const prediction = await response.json();
-    console.log('Prediction creee:', prediction.id);
+    // Étape 2 : Tester l'accès à Replicate
+    console.log('=== TEST 2: Acces Replicate ===');
+    
+    let replicateTest = '';
+    try {
+      const replicateResponse = await fetch('https://api.replicate.com/v1/models', {
+        headers: {
+          'Authorization': 'Token ' + apiToken,
+        }
+      });
+      replicateTest = 'Replicate API: ' + replicateResponse.status;
+      if (!replicateResponse.ok) {
+        const errorBody = await replicateResponse.text();
+        replicateTest += ' - ' + errorBody.substring(0, 200);
+      }
+    } catch (e) {
+      replicateTest = 'Replicate API: ERREUR - ' + e.message;
+    }
 
-    // Version asynchrone : on retourne immédiatement avec l'ID
-    const asyncResult = 'Generation musicale demarree avec succes !\n\n' +
-      'Votre composition est en cours de creation:\n\n' +
-      '🎼 Parametres:\n' +
+    // Étape 3 : Essayer la génération musicale
+    console.log('=== TEST 3: Generation musicale ===');
+    
+    let generationTest = '';
+    const musicPrompt = style + ' music, ' + prompt;
+    
+    try {
+      const response = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Token ' + apiToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          version: "b05b1dff1d8c6dc63d14b0cdb42135378dcb87f6373b0d3d341ede46e59e2dae",
+          input: {
+            model_version: "stereo-large",
+            prompt: musicPrompt,
+            duration: parseInt(duration) || 30,
+            temperature: 0.8,
+            top_k: 250,
+            top_p: 0.0,
+            classifier_free_guidance: 3.0,
+          }
+        })
+      });
+
+      generationTest = 'Generation: ' + response.status;
+      
+      if (response.ok) {
+        const prediction = await response.json();
+        generationTest += ' - SUCCESS - ID: ' + prediction.id;
+        
+        // SUCCÈS !
+        const successResult = 'GENERATION MUSICALE REUSSIE !\n\n' +
+          'Diagnostics:\n' +
+          '• ' + testResult + '\n' +
+          '• ' + replicateTest + '\n' +
+          '• ' + generationTest + '\n\n' +
+          'Votre composition:\n' +
+          '• Style: ' + style + '\n' +
+          '• Description: ' + prompt + '\n' +
+          '• Duree: ' + (duration || 30) + ' secondes\n\n' +
+          'ID de prediction: ' + prediction.id + '\n' +
+          'Statut: ' + prediction.status + '\n\n' +
+          'Suivez le progres:\n' +
+          'https://replicate.com/p/' + prediction.id;
+
+        return res.status(200).json({ 
+          result: successResult,
+          prediction_id: prediction.id,
+          status: 'success'
+        });
+        
+      } else {
+        const errorBody = await response.text();
+        generationTest += ' - ERREUR: ' + errorBody.substring(0, 300);
+      }
+      
+    } catch (e) {
+      generationTest = 'Generation: ERREUR CRITIQUE - ' + e.message + ' - Stack: ' + (e.stack || '').substring(0, 200);
+    }
+
+    // Retourner le diagnostic complet
+    const diagnosticResult = 'DIAGNOSTIC COMPLET DE L\'ERREUR\n\n' +
+      'Tests effectues:\n' +
+      '• ' + testResult + '\n' +
+      '• ' + replicateTest + '\n' +
+      '• ' + generationTest + '\n\n' +
+      'Parametres recus:\n' +
       '• Style: ' + style + '\n' +
       '• Description: ' + prompt + '\n' +
-      '• Duree: ' + (duration || 30) + ' secondes\n' +
-      '• Modele: MusicGen Stereo Large\n\n' +
-      '⏱️ Temps estime: 2-5 minutes\n' +
-      '🆔 ID de prediction: ' + prediction.id + '\n\n' +
-      '🔗 Suivez le progres en temps reel:\n' +
-      'https://replicate.com/p/' + prediction.id + '\n\n' +
-      '✨ Votre musique sera disponible au telechargement une fois terminee !\n\n' +
-      '💡 Astuce: Gardez cette page ouverte ou notez l\'ID pour recuperer votre creation plus tard.';
+      '• Duree: ' + (duration || 30) + '\n' +
+      '• Token present: ' + (apiToken ? 'OUI (' + apiToken.substring(0, 8) + '...)' : 'NON') + '\n\n' +
+      'Heure du test: ' + new Date().toISOString() + '\n\n' +
+      'PROCHAINE ETAPE: Analysez ces resultats pour identifier le probleme exact.';
 
-    res.status(200).json({ 
-      result: asyncResult,
-      status: 'processing',
-      prediction_id: prediction.id,
-      prediction_url: 'https://replicate.com/p/' + prediction.id,
-      estimated_time: '2-5 minutes'
+    res.status(500).json({ 
+      result: diagnosticResult,
+      debug: true
     });
 
-  } catch (error) {
-    console.error('Erreur generation musicale:', error.message);
+  } catch (mainError) {
+    console.error('ERREUR PRINCIPALE:', mainError);
     
+    const errorResult = 'ERREUR CRITIQUE DETECTEE\n\n' +
+      'Type: ' + mainError.name + '\n' +
+      'Message: ' + mainError.message + '\n' +
+      'Stack: ' + (mainError.stack || '').substring(0, 300) + '\n\n' +
+      'Heure: ' + new Date().toISOString() + '\n\n' +
+      'Cette erreur nous aide a identifier le probleme !';
+
     res.status(500).json({ 
-      error: 'Erreur lors de la generation musicale',
-      details: error.message,
-      suggestion: 'Verifiez votre credit Replicate ou reessayez dans quelques minutes'
+      result: errorResult,
+      error_details: {
+        name: mainError.name,
+        message: mainError.message,
+        stack: mainError.stack
+      }
     });
   }
 }
