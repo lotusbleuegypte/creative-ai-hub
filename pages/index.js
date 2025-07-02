@@ -51,7 +51,7 @@ export default function Home() {
       icon: '🎼',
       title: 'Générateur Musical IA',
       description: 'Créez des compositions musicales uniques avec notre IA inspirée de Suno. Générez des mélodies complètes.',
-      status: 'soon',
+      status: 'demo',
       color: 'from-purple-500 to-pink-500'
     },
     {
