@@ -401,7 +401,13 @@ export default function Home() {
                 result={result}
               />
             )}
-
+{activeModal === 'music' && (
+  <MusicAIInterface 
+    onGenerate={(params) => generateContent('music', params)}
+    isGenerating={isGenerating}
+    result={result}
+  />
+)}
             {activeModal === 'multimodal' && (
               <div style={{ textAlign: 'center', color: 'white' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🚧</div>
