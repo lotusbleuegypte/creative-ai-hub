@@ -59,7 +59,7 @@ export default function Home() {
       icon: '🔁',
       title: 'Synthèse Vocale IA',
       description: 'Transformez le texte en parole naturelle ou clonez des voix avec notre technologie avancée.',
-      status: 'soon',
+      status: 'demo',
       color: 'from-blue-500 to-cyan-500'
     },
     {
