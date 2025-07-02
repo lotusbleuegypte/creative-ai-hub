@@ -67,7 +67,7 @@ export default function Home() {
       icon: '🎥',
       title: 'Création Vidéo IA',
       description: 'Générez des vidéos professionnelles avec des outils similaires à Runway. De l\'idée au montage final.',
-      status: 'soon',
+      status: 'demo',
       color: 'from-green-500 to-teal-500'
     }
   ];
