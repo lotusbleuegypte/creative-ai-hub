@@ -903,3 +903,196 @@ Exemples :
     </div>
   );
 }
+
+
+function VideoAIInterface({ onGenerate, isGenerating, result }) {
+  const [prompt, setPrompt] = useState('');
+  const [style, setStyle] = useState('realistic');
+  const [duration, setDuration] = useState(10);
+  const [resolution, setResolution] = useState('1920x1080');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Style de vidéo
+        </label>
+        <select 
+          value={style} 
+          onChange={(e) => setStyle(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="realistic" style={{background: '#1f2937', color: 'white'}}>🎬 Photoréaliste - Ultra HD</option>
+          <option value="cinematic" style={{background: '#1f2937', color: 'white'}}>🎭 Cinématographique - Grade couleur</option>
+          <option value="animation" style={{background: '#1f2937', color: 'white'}}>🎨 Animation 3D - Style cartoon</option>
+          <option value="artistic" style={{background: '#1f2937', color: 'white'}}>🖼️ Artistique - Rendu pictural</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Description de la vidéo
+        </label>
+        <textarea 
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Décrivez la vidéo que vous voulez créer...
+
+Exemples :
+• Un coucher de soleil majestueux sur une montagne
+• Une ville futuriste avec des voitures volantes
+• Des formes géométriques colorées en mouvement
+• Un voyage dans l'espace vers une planète lointaine"
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem',
+            minHeight: '120px',
+            resize: 'vertical',
+            lineHeight: '1.5'
+          }}
+        />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div>
+          <label style={{ 
+            display: 'block', 
+            color: 'white', 
+            fontWeight: '600', 
+            marginBottom: '10px',
+            fontSize: '1.1rem'
+          }}>
+            Durée : {duration} secondes
+          </label>
+          <input 
+            type="range"
+            min="5"
+            max="30"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            style={{
+              width: '100%',
+              height: '8px',
+              borderRadius: '5px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              outline: 'none'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            color: 'rgba(255, 255, 255, 0.6)',
+            fontSize: '0.9rem',
+            marginTop: '5px'
+          }}>
+            <span>5s</span>
+            <span>30s</span>
+          </div>
+        </div>
+
+        <div>
+          <label style={{ 
+            display: 'block', 
+            color: 'white', 
+            fontWeight: '600', 
+            marginBottom: '10px',
+            fontSize: '1.1rem'
+          }}>
+            Résolution
+          </label>
+          <select 
+            value={resolution} 
+            onChange={(e) => setResolution(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '15px',
+              borderRadius: '10px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              fontSize: '1rem'
+            }}
+          >
+            <option value="1280x720" style={{background: '#1f2937', color: 'white'}}>HD - 720p</option>
+            <option value="1920x1080" style={{background: '#1f2937', color: 'white'}}>Full HD - 1080p</option>
+            <option value="3840x2160" style={{background: '#1f2937', color: 'white'}}>4K Ultra HD</option>
+          </select>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => onGenerate({ prompt, style, duration, resolution })}
+        disabled={isGenerating || !prompt || prompt.length < 10}
+        style={{
+          width: '100%',
+          background: isGenerating || !prompt || prompt.length < 10
+            ? 'rgba(108, 117, 125, 0.5)' 
+            : 'linear-gradient(45deg, #10b981, #14b8a6)',
+          border: 'none',
+          padding: '18px',
+          borderRadius: '10px',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          cursor: isGenerating || !prompt || prompt.length < 10 ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        {isGenerating ? '🎬 Génération vidéo... (peut prendre 3-5 min)' : '🎥 Générer la vidéo'}
+      </button>
+
+      {result && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '10px',
+          padding: '20px',
+          maxHeight: '500px',
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <h4 style={{
+            color: 'white',
+            fontWeight: '600',
+            marginBottom: '15px',
+            fontSize: '1.1rem'
+          }}>
+            🎬 Votre création vidéo :
+          </h4>
+          <div style={{
+            color: '#e5e5e5',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.6',
+            fontSize: '1rem'
+          }}>
+            {result}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
