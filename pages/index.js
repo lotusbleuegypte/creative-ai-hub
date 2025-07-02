@@ -416,6 +416,14 @@ export default function Home() {
     result={result}
   />
 )}
+
+{activeModal === 'video' && (
+  <VideoAIInterface 
+    onGenerate={(params) => generateContent('video', params)}
+    isGenerating={isGenerating}
+    result={result}
+  />
+)}
             {activeModal === 'multimodal' && (
               <div style={{ textAlign: 'center', color: 'white' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🚧</div>
