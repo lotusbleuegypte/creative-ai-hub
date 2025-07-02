@@ -725,3 +725,173 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
     </div>
   );
 }
+
+function VoiceAIInterface({ onGenerate, isGenerating, result }) {
+  const [text, setText] = useState('');
+  const [voice, setVoice] = useState('female-fr');
+  const [speed, setSpeed] = useState(1.0);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Type de voix
+        </label>
+        <select 
+          value={voice} 
+          onChange={(e) => setVoice(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="female-fr" style={{background: '#1f2937', color: 'white'}}>👩 Marie - Voix féminine française</option>
+          <option value="male-fr" style={{background: '#1f2937', color: 'white'}}>👨 Pierre - Voix masculine française</option>
+          <option value="child" style={{background: '#1f2937', color: 'white'}}>👧 Emma - Voix d'enfant</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Texte à synthétiser
+        </label>
+        <textarea 
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Entrez le texte que vous voulez transformer en parole... 
+
+Exemples :
+• Bonjour ! Comment allez-vous aujourd'hui ?
+• L'intelligence artificielle révolutionne notre monde.
+• Il était une fois, dans un royaume lointain..."
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem',
+            minHeight: '120px',
+            resize: 'vertical',
+            lineHeight: '1.5'
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: '0.9rem',
+          marginTop: '8px'
+        }}>
+          <span>{text.length} caractères</span>
+          <span>~{Math.ceil(text.length / 12)} secondes</span>
+        </div>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Vitesse de parole : {speed}x
+        </label>
+        <input 
+          type="range"
+          min="0.5"
+          max="2.0"
+          step="0.1"
+          value={speed}
+          onChange={(e) => setSpeed(e.target.value)}
+          style={{
+            width: '100%',
+            height: '8px',
+            borderRadius: '5px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            outline: 'none'
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: '0.9rem',
+          marginTop: '5px'
+        }}>
+          <span>0.5x (lent)</span>
+          <span>1.0x (normal)</span>
+          <span>2.0x (rapide)</span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => onGenerate({ text, voice, speed })}
+        disabled={isGenerating || !text || text.length < 3}
+        style={{
+          width: '100%',
+          background: isGenerating || !text || text.length < 3
+            ? 'rgba(108, 117, 125, 0.5)' 
+            : 'linear-gradient(45deg, #3b82f6, #06b6d4)',
+          border: 'none',
+          padding: '18px',
+          borderRadius: '10px',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          cursor: isGenerating || !text || text.length < 3 ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        {isGenerating ? '🎙️ Synthèse en cours...' : '🔊 Synthétiser la voix'}
+      </button>
+
+      {result && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '10px',
+          padding: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <h4 style={{
+            color: 'white',
+            fontWeight: '600',
+            marginBottom: '15px',
+            fontSize: '1.1rem'
+          }}>
+            🎙️ Synthèse vocale :
+          </h4>
+          <div style={{
+            color: '#e5e5e5',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.6',
+            fontSize: '1rem'
+          }}>
+            {result}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
