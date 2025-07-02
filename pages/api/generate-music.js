@@ -9,121 +9,138 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt requis' });
   }
 
-  const apiToken = process.env.REPLICATE_API_TOKEN;
-
-  if (!apiToken) {
-    return res.status(500).json({ 
-      error: 'Token API Replicate manquant'
-    });
-  }
-
   try {
     const musicPrompt = style + ' music, ' + prompt;
     
-    // Test 1: Vérifier les modèles disponibles
-    console.log('=== TEST: Verification des modeles disponibles ===');
-    
-    let availableModels = '';
-    try {
-      const modelsResponse = await fetch('https://api.replicate.com/v1/models/meta/musicgen', {
-        headers: {
-          'Authorization': 'Token ' + apiToken,
-        }
-      });
-      
-      if (modelsResponse.ok) {
-        const modelData = await modelsResponse.json();
-        availableModels = 'Modele MusicGen trouve. Derniere version: ' + (modelData.latest_version ? modelData.latest_version.id : 'inconnue');
-      } else {
-        availableModels = 'Erreur acces modele: ' + modelsResponse.status;
-      }
-    } catch (e) {
-      availableModels = 'Erreur verification modele: ' + e.message;
-    }
+    console.log('Generation musicale gratuite avec Hugging Face:', musicPrompt);
 
-    // Test 2: Essayer avec la version la plus simple possible
-    console.log('=== TEST: Generation avec version simple ===');
-    
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    // Utilisation de l'API Hugging Face gratuite
+    const response = await fetch('https://api-inference.huggingface.co/models/facebook/musicgen-small', {
       method: 'POST',
       headers: {
-        'Authorization': 'Token ' + apiToken,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        // Essayer avec une version très basique
-        version: "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
-        input: {
-          prompt: musicPrompt,
-          duration: parseInt(duration) || 30
+        inputs: musicPrompt,
+        parameters: {
+          max_length: Math.min(parseInt(duration) || 30, 30), // Max 30s en gratuit
+          temperature: 0.8,
         }
       })
     });
 
-    const responseText = await response.text();
-    
-    if (!response.ok) {
-      // Erreur détaillée
-      const errorResult = 'ERREUR DETAILLEE DE REPLICATE\n\n' +
-        'Status HTTP: ' + response.status + '\n' +
-        'Reponse complete: ' + responseText + '\n\n' +
-        'Verification modeles: ' + availableModels + '\n\n' +
-        'Parametres envoyes:\n' +
-        '• Prompt: ' + musicPrompt + '\n' +
-        '• Duree: ' + (parseInt(duration) || 30) + '\n' +
-        '• Token: ' + apiToken.substring(0, 10) + '...\n\n' +
-        'Heure: ' + new Date().toISOString() + '\n\n' +
-        'SOLUTIONS POSSIBLES:\n' +
-        '1. Votre compte Replicate manque de credits\n' +
-        '2. Le modele MusicGen n\'est plus disponible\n' +
-        '3. Votre token n\'a pas les permissions necessaires\n' +
-        '4. Probleme temporaire de Replicate';
+    console.log('Response status:', response.status);
 
-      return res.status(500).json({ 
-        result: errorResult,
-        raw_error: responseText,
-        http_status: response.status
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Erreur Hugging Face:', response.status, errorText);
+      
+      if (response.status === 503) {
+        // Modèle en cours de chargement
+        const loadingResult = 'Modele de generation musicale en cours de chargement...\n\n' +
+          'Le service gratuit Hugging Face demarre le modele.\n' +
+          'Cela peut prendre 1-2 minutes la premiere fois.\n\n' +
+          'Parametres de votre composition:\n' +
+          '• Style: ' + style + '\n' +
+          '• Description: ' + prompt + '\n' +
+          '• Duree: ' + (duration || 30) + ' secondes\n\n' +
+          'Veuillez reessayer dans 1-2 minutes !\n\n' +
+          '💡 Les modeles gratuits ont parfois des temps de demarrage.';
+
+        return res.status(200).json({ 
+          result: loadingResult,
+          status: 'loading',
+          retry_in: '1-2 minutes'
+        });
+      }
+      
+      throw new Error('Erreur Hugging Face: ' + response.status + ' - ' + errorText);
+    }
+
+    // Vérifier si c'est du JSON ou du binaire
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      const jsonResponse = await response.json();
+      
+      if (jsonResponse.error) {
+        if (jsonResponse.error.includes('loading')) {
+          const loadingResult = 'Modele en cours de chargement...\n\n' +
+            'Le service gratuit demarre. Reessayez dans 1-2 minutes !\n\n' +
+            'Votre composition: ' + style + ' - ' + prompt;
+          
+          return res.status(200).json({ 
+            result: loadingResult,
+            status: 'loading'
+          });
+        }
+        throw new Error(jsonResponse.error);
+      }
+    }
+
+    // Si c'est un fichier audio (réponse binaire)
+    if (contentType && contentType.includes('audio')) {
+      const audioBuffer = await response.arrayBuffer();
+      const base64Audio = Buffer.from(audioBuffer).toString('base64');
+      
+      const successResult = 'Composition musicale generee avec succes !\n\n' +
+        'Votre creation personnalisee:\n\n' +
+        '🎼 Parametres:\n' +
+        '• Style: ' + style + '\n' +
+        '• Description: ' + prompt + '\n' +
+        '• Duree: ' + (duration || 30) + ' secondes\n' +
+        '• Modele: MusicGen Small (Gratuit)\n' +
+        '• Service: Hugging Face\n\n' +
+        '✅ Generation terminee !\n' +
+        '🎧 Votre musique est prete !\n\n' +
+        '💡 Note: Version gratuite limitee a 30 secondes\n' +
+        '🔄 Vous pouvez generer autant de musiques que vous voulez !';
+
+      return res.status(200).json({ 
+        result: successResult,
+        status: 'completed',
+        audio_data: base64Audio,
+        format: 'audio/wav'
       });
     }
 
-    // Succès !
-    const prediction = JSON.parse(responseText);
+    // Autre type de réponse
+    const textResponse = await response.text();
+    const infoResult = 'Reponse du service musical gratuit:\n\n' +
+      'Service: Hugging Face MusicGen\n' +
+      'Statut: ' + response.status + '\n' +
+      'Reponse: ' + textResponse.substring(0, 500) + '\n\n' +
+      'Votre demande:\n' +
+      '• Style: ' + style + '\n' +
+      '• Description: ' + prompt + '\n\n' +
+      'Si vous voyez ce message, le service fonctionne !';
+
+    res.status(200).json({ 
+      result: infoResult,
+      status: 'info',
+      service: 'huggingface_free'
+    });
+
+  } catch (error) {
+    console.error('Erreur generation musicale gratuite:', error.message);
     
-    const successResult = 'SUCCES ! GENERATION MUSICALE DEMARREE\n\n' +
-      'Verification modeles: ' + availableModels + '\n\n' +
-      'Votre composition:\n' +
+    const fallbackResult = 'Service de generation musicale gratuite\n\n' +
+      'Votre composition demandee:\n' +
       '• Style: ' + style + '\n' +
       '• Description: ' + prompt + '\n' +
       '• Duree: ' + (duration || 30) + ' secondes\n\n' +
-      'ID de prediction: ' + prediction.id + '\n' +
-      'Statut initial: ' + prediction.status + '\n\n' +
-      'Suivez le progres:\n' +
-      'https://replicate.com/p/' + prediction.id + '\n\n' +
-      'Votre musique sera prete dans 2-5 minutes !';
-
-    res.status(200).json({ 
-      result: successResult,
-      prediction_id: prediction.id,
-      status: 'success'
-    });
-
-  } catch (mainError) {
-    // Erreur JavaScript
-    const jsErrorResult = 'ERREUR JAVASCRIPT DETECTEE\n\n' +
-      'Type d\'erreur: ' + mainError.name + '\n' +
-      'Message: ' + mainError.message + '\n' +
-      'Ligne d\'erreur: ' + (mainError.stack || '').split('\n')[1] + '\n\n' +
-      'Stack trace complete:\n' + (mainError.stack || '') + '\n\n' +
-      'Cela nous aide a identifier le probleme exact !';
+      'Statut: En developpement\n\n' +
+      '🔄 Alternatives gratuites en cours d\'integration:\n' +
+      '• Hugging Face MusicGen\n' +
+      '• Modeles open source\n' +
+      '• APIs gratuites\n\n' +
+      '💡 La generation musicale gratuite arrive bientot !\n' +
+      'En attendant, le module texte IA fonctionne parfaitement.';
 
     res.status(500).json({ 
-      result: jsErrorResult,
-      error_type: 'javascript_error',
-      error_details: {
-        name: mainError.name,
-        message: mainError.message,
-        stack: mainError.stack
-      }
+      result: fallbackResult,
+      status: 'development',
+      error_details: error.message
     });
   }
 }
