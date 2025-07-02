@@ -13,8 +13,8 @@ export default function Home() {
     for (let i = 0; i < 50; i++) {
       particleArray.push({
         id: i,
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
+        y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
         size: Math.random() * 3 + 1,
         speedX: (Math.random() - 0.5) * 0.5,
         speedY: (Math.random() - 0.5) * 0.5,
@@ -28,8 +28,8 @@ export default function Home() {
         ...particle,
         x: particle.x + particle.speedX,
         y: particle.y + particle.speedY,
-        x: particle.x > window.innerWidth ? 0 : particle.x < 0 ? window.innerWidth : particle.x,
-        y: particle.y > window.innerHeight ? 0 : particle.y < 0 ? window.innerHeight : particle.y,
+        x: particle.x > (typeof window !== 'undefined' ? window.innerWidth : 1000) ? 0 : particle.x < 0 ? (typeof window !== 'undefined' ? window.innerWidth : 1000) : particle.x,
+        y: particle.y > (typeof window !== 'undefined' ? window.innerHeight : 800) ? 0 : particle.y < 0 ? (typeof window !== 'undefined' ? window.innerHeight : 800) : particle.y,
       })));
     };
 
@@ -295,7 +295,7 @@ export default function Home() {
             flexWrap: 'wrap'
           }}>
             {['📝 Texte', '🎵 Musique', '🎭 Voix', '🎬 Vidéo'].map((step, index) => (
-              <div key={step}>
+              <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{
                   background: 'rgba(255, 255, 255, 0.1)',
                   padding: '15px 25px',
@@ -401,45 +401,37 @@ export default function Home() {
                 result={result}
               />
             )}
-{activeModal === 'music' && (
-  <MusicAIInterface 
-    onGenerate={(params) => generateContent('music', params)}
-    isGenerating={isGenerating}
-    result={result}
-  />
-)}
 
-{activeModal === 'voice' && (
-  <VoiceAIInterface 
-    onGenerate={(params) => generateContent('voice', params)}
-    isGenerating={isGenerating}
-    result={result}
-  />
-)}
+            {activeModal === 'music' && (
+              <MusicAIInterface 
+                onGenerate={(params) => generateContent('music', params)}
+                isGenerating={isGenerating}
+                result={result}
+              />
+            )}
 
-{activeModal === 'video' && (
-  <VideoAIInterface 
-    onGenerate={(params) => generateContent('video', params)}
-    isGenerating={isGenerating}
-    result={result}
-  />
-)}
+            {activeModal === 'voice' && (
+              <VoiceAIInterface 
+                onGenerate={(params) => generateContent('voice', params)}
+                isGenerating={isGenerating}
+                result={result}
+              />
+            )}
+
+            {activeModal === 'video' && (
+              <VideoAIInterface 
+                onGenerate={(params) => generateContent('video', params)}
+                isGenerating={isGenerating}
+                result={result}
+              />
+            )}
+
             {activeModal === 'multimodal' && (
               <div style={{ textAlign: 'center', color: 'white' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🚧</div>
                 <h3 style={{ marginBottom: '15px' }}>Hub Multimodal en développement</h3>
                 <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                   Cette fonctionnalité sera disponible prochainement !
-                </p>
-              </div>
-            )}
-
-            {activeModal !== 'text' && activeModal !== 'multimodal' && (
-              <div style={{ textAlign: 'center', color: 'white' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🚧</div>
-                <h3 style={{ marginBottom: '15px' }}>Module en développement</h3>
-                <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                  Ce module sera disponible prochainement !
                 </p>
               </div>
             )}
@@ -576,7 +568,6 @@ function TextAIInterface({ onGenerate, isGenerating, result }) {
     </div>
   );
 }
-
 
 function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const [prompt, setPrompt] = useState('');
@@ -903,7 +894,6 @@ Exemples :
     </div>
   );
 }
-
 
 function VideoAIInterface({ onGenerate, isGenerating, result }) {
   const [prompt, setPrompt] = useState('');
