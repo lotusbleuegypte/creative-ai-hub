@@ -408,6 +408,14 @@ export default function Home() {
     result={result}
   />
 )}
+
+{activeModal === 'voice' && (
+  <VoiceAIInterface 
+    onGenerate={(params) => generateContent('voice', params)}
+    isGenerating={isGenerating}
+    result={result}
+  />
+)}
             {activeModal === 'multimodal' && (
               <div style={{ textAlign: 'center', color: 'white' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🚧</div>
