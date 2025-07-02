@@ -9,23 +9,41 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt requis' });
   }
 
-  console.log('Variables disponibles:', Object.keys(process.env).filter(key => key.includes('REPLICATE')));
-  console.log('REPLICATE_API_TOKEN exists:', !!process.env.REPLICATE_API_TOKEN);
-
   const apiToken = process.env.REPLICATE_API_TOKEN;
 
   if (!apiToken) {
     return res.status(500).json({ 
-      error: 'Token API Replicate manquant',
-      debug: 'Variables disponibles: ' + Object.keys(process.env).filter(key => key.toLowerCase().includes('replicate')).join(', ')
+      error: 'Token API Replicate manquant'
     });
   }
 
   try {
     const musicPrompt = style + ' music, ' + prompt;
     
-    console.log('Generation musicale avec prompt:', musicPrompt);
+    console.log('=== DEBUG REPLICATE ===');
+    console.log('Prompt:', musicPrompt);
+    console.log('Token present:', !!apiToken);
+    console.log('Token preview:', apiToken.substring(0, 10) + '...');
 
+    // Test simple d'abord : vérifier que l'API Replicate répond
+    const testResponse = await fetch('https://api.replicate.com/v1/models', {
+      headers: {
+        'Authorization': 'Token ' + apiToken,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('Test API Status:', testResponse.status);
+
+    if (!testResponse.ok) {
+      const testError = await testResponse.text();
+      console.log('Test API Error:', testError);
+      throw new Error('Token Replicate invalide. Status: ' + testResponse.status + ' - ' + testError);
+    }
+
+    console.log('Token Replicate valide !');
+
+    // Maintenant essayer la génération musicale
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -46,92 +64,61 @@ export default async function handler(req, res) {
       })
     });
 
+    console.log('Prediction Response Status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erreur Replicate:', response.status, errorText);
-      throw new Error('Replicate API Error ' + response.status + ': ' + errorText);
+      console.log('Prediction Error Response:', errorText);
+      
+      let errorDetails = '';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorDetails = errorJson.detail || errorJson.error || errorText;
+      } catch (e) {
+        errorDetails = errorText;
+      }
+      
+      throw new Error('Erreur Replicate API: ' + response.status + ' - ' + errorDetails);
     }
 
     const prediction = await response.json();
-    console.log('Prediction creee:', prediction.id);
+    console.log('Prediction creee avec succes:', prediction.id);
+    console.log('Status initial:', prediction.status);
 
-    let result = prediction;
-    let attempts = 0;
-    const maxAttempts = 30;
-
-    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      const statusResponse = await fetch('https://api.replicate.com/v1/predictions/' + result.id, {
-        headers: {
-          'Authorization': 'Token ' + apiToken,
-        }
-      });
-
-      if (statusResponse.ok) {
-        result = await statusResponse.json();
-        console.log('Tentative ' + (attempts + 1) + ': Status = ' + result.status);
-      }
-      attempts++;
-    }
-
-    if (result.status === 'failed') {
-      throw new Error('Generation echouee: ' + (result.error || 'Erreur inconnue'));
-    }
-
-    if (result.status !== 'succeeded') {
-      const partialResult = 'Generation en cours...\n\n' +
-        'Votre composition est en train d\'etre creee:\n' +
-        '• Style: ' + style + '\n' +
-        '• Inspiration: ' + prompt + '\n' +
-        '• Duree: ' + (duration || 30) + ' secondes\n\n' +
-        'Statut: Traitement en cours (' + result.status + ')\n' +
-        'ID de prediction: ' + result.id + '\n\n' +
-        'La generation musicale peut prendre jusqu\'a 5 minutes. Reessayez dans quelques instants !';
-
-      return res.status(200).json({ 
-        result: partialResult,
-        status: 'processing',
-        prediction_id: result.id
-      });
-    }
-
-    const musicResult = 'Composition generee avec succes !\n\n' +
-      'Details de la composition:\n' +
+    // Version simplifiée : retourner immédiatement avec l'ID
+    const quickResult = 'Generation musicale demarree avec succes !\n\n' +
+      'Details de la requete:\n' +
       '• Style: ' + style + '\n' +
       '• Inspiration: ' + prompt + '\n' +
       '• Duree: ' + (duration || 30) + ' secondes\n' +
-      '• Modele: MusicGen Stereo Large\n' +
-      '• Qualite: HD Stereo\n\n' +
-      'Votre musique est prete !\n' +
-      (result.output ? 'Lien de telechargement: ' + result.output + '\n\n' : '') +
-      'Conseils:\n' +
-      '• Ecoutez avec un bon casque pour apprecier la qualite stereo\n' +
-      '• Vous pouvez utiliser cette musique dans vos projets creatifs\n' +
-      '• Essayez differents styles pour des ambiances variees !\n\n' +
-      'ID de prediction: ' + result.id;
+      '• Modele: MusicGen Stereo Large\n\n' +
+      'Statut: ' + prediction.status + '\n' +
+      'ID de prediction: ' + prediction.id + '\n\n' +
+      'La generation musicale prend 2-5 minutes.\n' +
+      'Vous pouvez verifier le progres sur:\n' +
+      'https://replicate.com/p/' + prediction.id + '\n\n' +
+      'Note: Cette fonctionnalite est en test. Replicate fonctionne correctement !';
 
     res.status(200).json({ 
-      result: musicResult,
-      audio_url: result.output,
-      status: 'succeeded',
-      metadata: {
-        style: style,
-        prompt: prompt,
-        duration: duration || 30,
-        model: 'MusicGen Stereo Large',
-        prediction_id: result.id
-      }
+      result: quickResult,
+      status: 'started',
+      prediction_id: prediction.id,
+      prediction_url: 'https://replicate.com/p/' + prediction.id
     });
 
   } catch (error) {
-    console.error('Erreur generation musicale:', error);
+    console.error('=== ERREUR COMPLETE ===');
+    console.error('Message:', error.message);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({ 
       error: 'Erreur lors de la generation musicale',
       details: error.message,
       debug_info: {
         has_token: !!apiToken,
-        token_preview: apiToken ? apiToken.substring(0, 5) + '...' : 'none'
+        token_preview: apiToken ? apiToken.substring(0, 5) + '...' : 'none',
+        error_type: error.name,
+        timestamp: new Date().toISOString()
       }
     });
   }
