@@ -697,7 +697,18 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   };
 
   // Gérer la génération
+  // Gérer la génération - VERSION CORRIGÉE
   const handleGenerate = async () => {
+    await onGenerate({ prompt, style, duration });
+    
+    // Créer les données audio immédiatement après génération
+    setAudioData({
+      style,
+      duration: parseInt(duration),
+      prompt,
+      bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : style === 'jazz' ? 90 : 120
+    });
+  };
     const generationResult = await onGenerate({ prompt, style, duration });
     
     // Extraire les données audio du résultat
