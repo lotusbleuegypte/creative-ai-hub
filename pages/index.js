@@ -7,7 +7,6 @@ export default function Home() {
   const [result, setResult] = useState('');
   const [particles, setParticles] = useState([]);
 
-  // Génération de particules pour l'arrière-plan
   useEffect(() => {
     const particleArray = [];
     for (let i = 0; i < 50; i++) {
@@ -107,7 +106,6 @@ export default function Home() {
         <meta name="description" content="Plateforme tout-en-un pour la création avec l'IA" />
       </Head>
 
-      {/* Particules d'arrière-plan */}
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}>
         {particles.map(particle => (
           <div
@@ -126,7 +124,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Header */}
       <header style={{ textAlign: 'center', padding: '80px 20px', position: 'relative', zIndex: 1 }}>
         <h1 style={{
           fontSize: 'clamp(3rem, 8vw, 6rem)',
@@ -152,7 +149,6 @@ export default function Home() {
         </p>
       </header>
 
-      {/* Modules Grid */}
       <div style={{ 
         maxWidth: '1400px', 
         margin: '0 auto', 
@@ -172,33 +168,80 @@ export default function Home() {
               onClick={() => setActiveModal(module.id)}
               style={{
                 background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            fontSize: '1rem'
-          }}
-        >
-          <option value="natural" style={{background: '#1f2937', color: 'white'}}>Naturelle</option>
-          <option value="professional" style={{background: '#1f2937', color: 'white'}}>Professionnelle</option>
-          <option value="casual" style={{background: '#1f2937', color: 'white'}}>Décontractée</option>
-        </select>
-      </div>
+                backdropFilter: 'blur(20px)',
+                borderRadius: '25px',
+                padding: '40px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-10px) scale(1.02)';
+                e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0) scale(1)';
+                e.target.style.boxShadow = 'none';
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              <div style={{
+                fontSize: '4rem',
+                marginBottom: '25px',
+                display: 'block'
+              }}>
+                {module.icon}
+              </div>
 
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Texte à synthétiser
-        </label>
-        <textarea 
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Entrez le texte que vous souhaitez transformer en audio..."
-          style={{
-            width: '100%',
+              <div style={{
+                display: 'inline-block',
+                padding: '8px 20px',
+                borderRadius: '25px',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                marginBottom: '25px',
+                background: module.status === 'demo' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(108, 117, 125, 0.2)',
+                color: module.status === 'demo' ? '#ffc107' : '#6c757d',
+                border: `1px solid ${module.status === 'demo' ? 'rgba(255, 193, 7, 0.3)' : 'rgba(108, 117, 125, 0.3)'}`
+              }}>
+                {module.status === 'demo' ? 'FONCTIONNEL' : 'BIENTÔT'}
+              </div>
+
+              <h3 style={{
+                fontSize: '1.8rem',
+                fontWeight: '700',
+                color: 'white',
+                marginBottom: '20px'
+              }}>
+                {module.title}
+              </h3>
+
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: '1.6',
+                marginBottom: '30px',
+                fontSize: '1.1rem'
+              }}>
+                {module.description}
+              </p>
+
+              <button style={{
+                background: module.status === 'soon' 
+                  ? 'rgba(108, 117, 125, 0.5)' 
+                  : `linear-gradient(45deg, ${module.color.includes('orange') ? '#f97316, #ef4444' : 
+                    module.color.includes('purple') ? '#8b5cf6, #ec4899' :
+                    module.color.includes('blue') ? '#3b82f6, #06b6d4' : 
+                    '#10b981, #14b8a6'})`,
+                border: 'none',
+                padding: '15px 30px',
+                borderRadius: '25px',
+                color: 'white',
+                fontWeight: '600',
+                cursor: module.status === 'soon' ? 'not-allowed' : 'pointer',
+                width: '100%',
             padding: '15px',
             borderRadius: '10px',
             background: 'rgba(255, 255, 255, 0.1)',
@@ -291,9 +334,9 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="realistic" style={{background: '#1f2937', color: 'white'}}>Réaliste</option>
-          <option value="animation" style={{background: '#1f2937', color: 'white'}}>Animation</option>
-          <option value="cinematic" style={{background: '#1f2937', color: 'white'}}>Cinématique</option>
+          <option value="realistic">Réaliste</option>
+          <option value="animation">Animation</option>
+          <option value="cinematic">Cinématique</option>
         </select>
       </div>
 
@@ -400,80 +443,6 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
     </div>
   );
 }
-                backdropFilter: 'blur(20px)',
-                borderRadius: '25px',
-                padding: '40px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-10px) scale(1.02)';
-                e.target.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
-                e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0) scale(1)';
-                e.target.style.boxShadow = 'none';
-                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-              }}
-            >
-              <div style={{
-                fontSize: '4rem',
-                marginBottom: '25px',
-                display: 'block'
-              }}>
-                {module.icon}
-              </div>
-
-              <div style={{
-                display: 'inline-block',
-                padding: '8px 20px',
-                borderRadius: '25px',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                marginBottom: '25px',
-                background: module.status === 'demo' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(108, 117, 125, 0.2)',
-                color: module.status === 'demo' ? '#ffc107' : '#6c757d',
-                border: `1px solid ${module.status === 'demo' ? 'rgba(255, 193, 7, 0.3)' : 'rgba(108, 117, 125, 0.3)'}`
-              }}>
-                {module.status === 'demo' ? 'FONCTIONNEL' : 'BIENTÔT'}
-              </div>
-
-              <h3 style={{
-                fontSize: '1.8rem',
-                fontWeight: '700',
-                color: 'white',
-                marginBottom: '20px'
-              }}>
-                {module.title}
-              </h3>
-
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                lineHeight: '1.6',
-                marginBottom: '30px',
-                fontSize: '1.1rem'
-              }}>
-                {module.description}
-              </p>
-
-              <button style={{
-                background: module.status === 'soon' 
-                  ? 'rgba(108, 117, 125, 0.5)' 
-                  : `linear-gradient(45deg, ${module.color.includes('orange') ? '#f97316, #ef4444' : 
-                    module.color.includes('purple') ? '#8b5cf6, #ec4899' :
-                    module.color.includes('blue') ? '#3b82f6, #06b6d4' : 
-                    '#10b981, #14b8a6'})`,
-                border: 'none',
-                padding: '15px 30px',
-                borderRadius: '25px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: module.status === 'soon' ? 'not-allowed' : 'pointer',
-                width: '100%',
                 fontSize: '1.1rem',
                 transition: 'all 0.3s ease'
               }}>
@@ -483,7 +452,6 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
           ))}
         </div>
 
-        {/* Hub Multimodal */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.15)',
           backdropFilter: 'blur(25px)',
@@ -565,7 +533,6 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
         </div>
       </div>
 
-      {/* Modal */}
       {activeModal && (
         <div style={{
           position: 'fixed',
@@ -680,7 +647,6 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
   );
 }
 
-// Composants simplifiés sans Tone.js
 function TextAIInterface({ onGenerate, isGenerating, result }) {
   const [prompt, setPrompt] = useState('');
   const [task, setTask] = useState('creative');
@@ -710,10 +676,10 @@ function TextAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="creative" style={{background: '#1f2937', color: 'white'}}>Rédaction créative</option>
-          <option value="correct" style={{background: '#1f2937', color: 'white'}}>Correction orthographique</option>
-          <option value="translate" style={{background: '#1f2937', color: 'white'}}>Traduction</option>
-          <option value="summary" style={{background: '#1f2937', color: 'white'}}>Résumé de texte</option>
+          <option value="creative">Rédaction créative</option>
+          <option value="correct">Correction orthographique</option>
+          <option value="translate">Traduction</option>
+          <option value="summary">Résumé de texte</option>
         </select>
       </div>
 
@@ -827,12 +793,12 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="electronic" style={{background: '#1f2937', color: 'white'}}>Électronique</option>
-          <option value="pop" style={{background: '#1f2937', color: 'white'}}>Pop</option>
-          <option value="rock" style={{background: '#1f2937', color: 'white'}}>Rock</option>
-          <option value="jazz" style={{background: '#1f2937', color: 'white'}}>Jazz</option>
-          <option value="classical" style={{background: '#1f2937', color: 'white'}}>Classique</option>
-          <option value="ambient" style={{background: '#1f2937', color: 'white'}}>Ambient</option>
+          <option value="electronic">Électronique</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="jazz">Jazz</option>
+          <option value="classical">Classique</option>
+          <option value="ambient">Ambient</option>
         </select>
       </div>
 
@@ -971,9 +937,9 @@ function VoiceAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="fr" style={{background: '#1f2937', color: 'white'}}>Français</option>
-          <option value="en" style={{background: '#1f2937', color: 'white'}}>English</option>
-          <option value="es" style={{background: '#1f2937', color: 'white'}}>Español</option>
+          <option value="fr">Français</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
         </select>
       </div>
 
@@ -995,3 +961,30 @@ function VoiceAIInterface({ onGenerate, isGenerating, result }) {
             padding: '15px',
             borderRadius: '10px',
             background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="natural">Naturelle</option>
+          <option value="professional">Professionnelle</option>
+          <option value="casual">Décontractée</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Texte à synthétiser
+        </label>
+        <textarea 
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Entrez le texte que vous souhaitez transformer en audio..."
+          style={{
+            width: '100%',
