@@ -27,8 +27,8 @@ export default async function handler(req, res) {
     try {
       console.log('🎵 Génération audio avec Hugging Face...');
       
-      const response = await fetch('https://api-inference.huggingface.co/models/facebook/musicgen-stereo-large
-', {
+     const response = await fetch('https://api-inference.huggingface.co/models/facebook/musicgen-stereo-large', {
+
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
