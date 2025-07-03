@@ -73,6 +73,33 @@ export default function Home() {
   ];
 
   const generateContent = async (type, params) => {
+  setIsGenerating(true);
+  setResult('');
+
+  try {
+    const response = await fetch(`/api/generate-${type}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+
+    const data = await response.json();
+    if (data.error) {
+      setResult(`❌ Erreur: ${data.error}`);
+    } else {
+      setResult(data.result);
+      
+      // 🎵 NOUVEAU: Stocker les données audio
+      if (type === 'music' && data.audioBase64) {
+        window.lastMusicGeneration = data;
+      }
+    }
+  } catch (error) {
+    setResult('❌ Erreur de connexion. Vérifiez votre internet.');
+  }
+
+  setIsGenerating(false);
+};
     setIsGenerating(true);
     setResult('');
 
