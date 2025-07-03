@@ -36,7 +36,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           inputs: optimizedPrompt,
           parameters: {
-            max_new_tokens: Math.min(1024, duration * 8), // Ajuste selon la durée
+            max_new_tokens: Math.min(1024, duration * 8),
             temperature: 0.7,
             do_sample: true,
           }
@@ -56,33 +56,13 @@ export default async function handler(req, res) {
     }
 
     // Texte de résultat enrichi
-    const result = `🎵 Composition générée avec ${audioBase64 ? 'HUGGING FACE' : 'SIMULATION'} !
-
-📋 Votre composition "${style}" :
-• Ambiance : ${prompt}
-• Durée : ${duration} secondes
-• Qualité : ${audioBase64 ? 'Professionnelle (Vraie IA)' : 'Simulation Premium'}
-
-🎼 Structure musicale :
-${musicData.structure}
-
-🎹 Instruments générés :
-${musicData.instruments.map(i => `• ${i}`).join('\n')}
-
-🎵 Caractéristiques :
-• Tempo : ${musicData.bpm} BPM
-• Tonalité : ${musicData.key}
-• Style : ${musicData.description}
-• Complexité : ${musicData.complexity}/5
-• Ambiance : ${musicData.mood}
-
-${audioBase64 ? '🎧 AUDIO RÉEL GÉNÉRÉ par IA !' : '🎧 Simulation audio prête !'}`;
+    const result = `🎵 Composition générée avec ${audioBase64 ? 'HUGGING FACE' : 'SIMULATION'} !\n\n📋 Votre composition "${style}" :\n• Ambiance : ${prompt}\n• Durée : ${duration} secondes\n• Qualité : ${audioBase64 ? 'Professionnelle (Vraie IA)' : 'Simulation Premium'}\n\n🎼 Structure musicale :\n${musicData.structure}\n\n🎹 Instruments générés :\n${musicData.instruments.map(i => `• ${i}`).join('\n')}\n\n🎵 Caractéristiques :\n• Tempo : ${musicData.bpm} BPM\n• Tonalité : ${musicData.key}\n• Style : ${musicData.description}\n• Complexité : ${musicData.complexity}/5\n• Ambiance : ${musicData.mood}\n\n${audioBase64 ? '🎧 AUDIO RÉEL GÉNÉRÉ par IA !' : '🎧 Simulation audio prête !'}`;
 
     res.status(200).json({
       success: true,
       result: result,
       audioData: musicData,
-      audioBase64: audioBase64, // 🎵 VRAIE MUSIQUE si disponible
+      audioBase64: audioBase64,
       webAudioReady: true,
       realAudio: !!audioBase64,
       optimizedPrompt: optimizedPrompt
@@ -97,7 +77,6 @@ ${audioBase64 ? '🎧 AUDIO RÉEL GÉNÉRÉ par IA !' : '🎧 Simulation audio p
   }
 }
 
-// 🎯 Optimise le prompt pour Hugging Face
 function createOptimizedPrompt(prompt, style, musicData) {
   const stylePrompts = {
     electronic: `electronic dance music, synthesizers, ${musicData.bpm} bpm`,
@@ -109,11 +88,8 @@ function createOptimizedPrompt(prompt, style, musicData) {
   };
 
   const baseStyle = stylePrompts[style] || stylePrompts.electronic;
-  
-  // Combine le style avec le prompt utilisateur
   let optimized = `${baseStyle}, ${prompt}`;
-  
-  // Ajoute des mots-clés selon l'ambiance
+
   const moodKeywords = {
     'joyeux': 'upbeat, happy, energetic',
     'mélancolique': 'melancholic, sad, emotional',
@@ -130,7 +106,6 @@ function createOptimizedPrompt(prompt, style, musicData) {
   return optimized;
 }
 
-// Garde toutes vos fonctions existantes
 function generateAdvancedMusicData(prompt, style, duration) {
   const styles = {
     electronic: {
@@ -178,8 +153,6 @@ function generateAdvancedMusicData(prompt, style, duration) {
   };
 
   const config = styles[style] || styles.electronic;
-  
-  // Ajuster selon le prompt
   if (prompt.includes('fast') || prompt.includes('énergique')) {
     config.bpm += 20;
   }
@@ -200,7 +173,6 @@ function generateAdvancedMusicData(prompt, style, duration) {
 
 function calculateComplexity(style, prompt) {
   let complexity = 1;
-  
   const styleComplexity = {
     'classical': 3,
     'jazz': 3,
@@ -209,14 +181,13 @@ function calculateComplexity(style, prompt) {
     'pop': 1,
     'ambient': 1
   };
-  
   complexity *= (styleComplexity[style] || 1);
-  
+
   const complexWords = ['complex', 'sophistiqué', 'avancé', 'technique', 'virtuose'];
   if (complexWords.some(word => prompt.toLowerCase().includes(word))) {
     complexity += 0.5;
   }
-  
+
   return Math.min(5, Math.max(1, complexity));
 }
 
