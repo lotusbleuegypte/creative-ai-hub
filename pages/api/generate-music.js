@@ -1,4 +1,4 @@
-// pages/api/generate-music.js - VERSION WEB AUDIO ILLIMITÉE
+// pages/api/generate-music.js - VERSION HUGGING FACE + MÉTADONNÉES
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,55 +6,131 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { prompt, style, duration } = req.body;
+    const { prompt, style, duration, token } = req.body;
 
     if (!prompt || !style) {
       return res.status(400).json({ error: 'Prompt et style requis' });
     }
 
-    // Simulation du temps de génération (comme Suno)
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    if (!token) {
+      return res.status(400).json({ error: 'Token Hugging Face requis' });
+    }
 
-    // Génération de métadonnées musicales avancées
+    // Génération des métadonnées comme avant
     const musicData = generateAdvancedMusicData(prompt, style, duration);
 
-    const result = `🎵 Composition générée avec succès !
+    // Création du prompt optimisé pour Hugging Face
+    const optimizedPrompt = createOptimizedPrompt(prompt, style, musicData);
+
+    // 🎵 VRAIE GÉNÉRATION MUSICALE avec Hugging Face
+    let audioBase64 = null;
+    try {
+      console.log('🎵 Génération audio avec Hugging Face...');
+      
+      const response = await fetch('https://api-inference.huggingface.co/models/facebook/musicgen-small', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: optimizedPrompt,
+          parameters: {
+            max_new_tokens: Math.min(1024, duration * 8), // Ajuste selon la durée
+            temperature: 0.7,
+            do_sample: true,
+          }
+        })
+      });
+
+      if (response.ok) {
+        const audioBuffer = await response.arrayBuffer();
+        audioBase64 = Buffer.from(audioBuffer).toString('base64');
+        console.log('✅ Audio généré avec succès !');
+      } else {
+        console.log('⚠️ Fallback vers simulation (modèle en chargement)');
+      }
+
+    } catch (error) {
+      console.log('⚠️ Erreur Hugging Face, fallback vers simulation:', error.message);
+    }
+
+    // Texte de résultat enrichi
+    const result = `🎵 Composition générée avec ${audioBase64 ? 'HUGGING FACE' : 'SIMULATION'} !
 
 📋 Votre composition "${style}" :
 • Ambiance : ${prompt}
 • Durée : ${duration} secondes
-• Qualité : Professionnelle
+• Qualité : ${audioBase64 ? 'Professionnelle (Vraie IA)' : 'Simulation Premium'}
 
 🎼 Structure musicale :
 ${musicData.structure}
 
 🎹 Instruments générés :
-${musicData.instruments.join(' • ')}
+${musicData.instruments.map(i => `• ${i}`).join('\n')}
 
 🎵 Caractéristiques :
 • Tempo : ${musicData.bpm} BPM
 • Tonalité : ${musicData.key}
 • Style : ${musicData.description}
+• Complexité : ${musicData.complexity}/5
+• Ambiance : ${musicData.mood}
 
-✨ AUDIO PRÊT ! Utilisez les contrôles de lecture ci-dessous.
-
-🎧 Votre musique de qualité Suno est maintenant disponible !`;
+${audioBase64 ? '🎧 AUDIO RÉEL GÉNÉRÉ par IA !' : '🎧 Simulation audio prête !'}`;
 
     res.status(200).json({
       success: true,
       result: result,
       audioData: musicData,
-      webAudioReady: true
+      audioBase64: audioBase64, // 🎵 VRAIE MUSIQUE si disponible
+      webAudioReady: true,
+      realAudio: !!audioBase64,
+      optimizedPrompt: optimizedPrompt
     });
 
   } catch (error) {
     console.error('Erreur génération musicale:', error);
     res.status(500).json({ 
-      error: 'Erreur lors de la génération musicale'
+      error: 'Erreur lors de la génération musicale',
+      details: error.message
     });
   }
 }
 
+// 🎯 Optimise le prompt pour Hugging Face
+function createOptimizedPrompt(prompt, style, musicData) {
+  const stylePrompts = {
+    electronic: `electronic dance music, synthesizers, ${musicData.bpm} bpm`,
+    pop: `pop music, catchy melody, vocals, modern production`,
+    rock: `rock music, electric guitar, drums, energetic`,
+    jazz: `jazz music, saxophone, piano, improvisation, swing`,
+    classical: `classical music, orchestra, strings, piano`,
+    ambient: `ambient music, atmospheric, drone, peaceful`
+  };
+
+  const baseStyle = stylePrompts[style] || stylePrompts.electronic;
+  
+  // Combine le style avec le prompt utilisateur
+  let optimized = `${baseStyle}, ${prompt}`;
+  
+  // Ajoute des mots-clés selon l'ambiance
+  const moodKeywords = {
+    'joyeux': 'upbeat, happy, energetic',
+    'mélancolique': 'melancholic, sad, emotional',
+    'mystérieux': 'mysterious, dark, atmospheric',
+    'romantique': 'romantic, soft, gentle',
+    'énergique': 'energetic, powerful, intense',
+    'relaxant': 'relaxing, calm, peaceful'
+  };
+
+  if (musicData.mood && moodKeywords[musicData.mood]) {
+    optimized += `, ${moodKeywords[musicData.mood]}`;
+  }
+
+  return optimized;
+}
+
+// Garde toutes vos fonctions existantes
 function generateAdvancedMusicData(prompt, style, duration) {
   const styles = {
     electronic: {
