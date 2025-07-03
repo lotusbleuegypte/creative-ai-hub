@@ -72,34 +72,8 @@ export default function Home() {
     }
   ];
 
+  // 🎵 FONCTION CORRIGÉE pour la musique
   const generateContent = async (type, params) => {
-  setIsGenerating(true);
-  setResult('');
-
-  try {
-    const response = await fetch(`/api/generate-${type}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
-    });
-
-    const data = await response.json();
-    if (data.error) {
-      setResult(`❌ Erreur: ${data.error}`);
-    } else {
-      setResult(data.result);
-      
-      // 🎵 NOUVEAU: Stocker les données audio
-      if (type === 'music' && data.audioBase64) {
-        window.lastMusicGeneration = data;
-      }
-    }
-  } catch (error) {
-    setResult('❌ Erreur de connexion. Vérifiez votre internet.');
-  }
-
-  setIsGenerating(false);
-};
     setIsGenerating(true);
     setResult('');
 
@@ -115,6 +89,11 @@ export default function Home() {
         setResult(`❌ Erreur: ${data.error}`);
       } else {
         setResult(data.result);
+        
+        // 🎵 NOUVEAU: Stocker les données audio
+        if (type === 'music' && data.audioBase64) {
+          window.lastMusicGeneration = data;
+        }
       }
     } catch (error) {
       setResult('❌ Erreur de connexion. Vérifiez votre internet.');
@@ -600,229 +579,13 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('electronic');
   const [duration, setDuration] = useState(30);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [audioData, setAudioData] = useState(null);
-  const [waveformBars, setWaveformBars] = useState([]);
-  const [hfToken, setHfToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
 
-  // Charger le token depuis localStorage au démarrage
-  useEffect(() => {
-    const savedToken = localStorage.getItem('hf_token');
-    if (savedToken) {
-      setHfToken(savedToken);
-    }
-  }, []);
-
-  // Générer la waveform visuelle
-  useEffect(() => {
-    const bars = [];
-    for (let i = 0; i < 100; i++) {
-      bars.push(Math.random() * 60 + 20);
-    }
-    setWaveformBars(bars);
-  }, [result]);
-
-  // Sauvegarder le token
-  const saveToken = () => {
-    if (!hfToken || !hfToken.startsWith('hf_')) {
-      alert('❌ Token invalide. Il doit commencer par "hf_"');
-      return;
-    }
-    localStorage.setItem('hf_token', hfToken);
-    setShowTokenInput(false);
-    alert('✅ Token sauvegardé ! Vous pouvez maintenant générer de la vraie musique.');
-  };
-
-  // Gérer la génération avec token
   const handleGenerate = async () => {
-    // Récupérer le token depuis localStorage
-    const token = localStorage.getItem('hf_token');
-    
-    await onGenerate({ 
-      prompt, 
-      style, 
-      duration,
-      token: token || null // Passer le token ou null pour le fallback
-    });
-    
-    // Créer les données audio
-    setAudioData({
-      style,
-      duration: parseInt(duration),
-      prompt,
-      bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : style === 'jazz' ? 90 : 120
-    });
-  };
-
-  // Jouer la musique (code existant...)
-  const playMusic = async () => {
-    if (!audioData) return;
-    
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      setIsPlaying(true);
-      
-      // Créer des oscillateurs pour simuler la musique
-      const createTone = (freq, startTime, duration) => {
-        const osc = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        osc.type = style === 'electronic' ? 'sawtooth' : style === 'rock' ? 'square' : 'sine';
-        osc.frequency.setValueAtTime(freq, startTime);
-        
-        gainNode.gain.setValueAtTime(0.1, startTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        
-        osc.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-      };
-      
-      // Créer une mélodie
-      const now = audioContext.currentTime;
-      const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
-      
-      for (let i = 0; i < Math.min(20, audioData.duration); i++) {
-        const freq = frequencies[Math.floor(Math.random() * frequencies.length)];
-        const startTime = now + (i * 0.5);
-        const noteDuration = 0.8;
-        
-        createTone(freq, startTime, noteDuration);
-        
-        // Basse
-        if (i % 4 === 0) {
-          createTone(freq / 4, startTime, noteDuration * 2);
-        }
-      }
-      
-      // Animation de progression
-      const progressInterval = setInterval(() => {
-        setCurrentTime(prev => {
-          const newTime = prev + 0.1;
-          if (newTime >= audioData.duration) {
-            clearInterval(progressInterval);
-            setIsPlaying(false);
-            setCurrentTime(0);
-            return 0;
-          }
-          return newTime;
-        });
-      }, 100);
-      
-      // Arrêter automatiquement
-      setTimeout(() => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-        clearInterval(progressInterval);
-      }, audioData.duration * 1000);
-      
-    } catch (error) {
-      console.error('Erreur lecture:', error);
-      setIsPlaying(false);
-      alert('🎵 Lecture de votre composition !\nStyle: ' + style + '\nDescription: ' + prompt);
-    }
-  };
-
-  // Arrêter la musique
-  const stopMusic = () => {
-    setIsPlaying(false);
-    setCurrentTime(0);
+    await onGenerate({ prompt, style, duration });
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-      
-      {/* Section Token Hugging Face */}
-      <div style={{
-        background: 'rgba(102, 126, 234, 0.1)',
-        border: '1px solid rgba(102, 126, 234, 0.3)',
-        borderRadius: '15px',
-        padding: '20px'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '15px'
-        }}>
-          <h4 style={{ color: 'white', margin: 0, fontSize: '1.1rem' }}>
-            🔑 Configuration Hugging Face
-          </h4>
-          <button
-            onClick={() => setShowTokenInput(!showTokenInput)}
-            style={{
-              background: 'none',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '8px',
-              color: 'white',
-              padding: '8px 16px',
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            {localStorage.getItem('hf_token') ? '✅ Configuré' : '⚙️ Configurer'}
-          </button>
-        </div>
-
-        <p style={{ 
-          color: 'rgba(255, 255, 255, 0.8)', 
-          fontSize: '0.9rem',
-          margin: '0 0 15px 0'
-        }}>
-          {localStorage.getItem('hf_token') 
-            ? '🎵 Prêt pour générer de la vraie musique avec Hugging Face !' 
-            : '💡 Configurez votre token pour obtenir de la vraie musique IA au lieu de simulations.'
-          }
-        </p>
-
-        {showTokenInput && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'end' }}>
-            <div style={{ flex: 1 }}>
-              <input
-                type="text"
-                value={hfToken}
-                onChange={(e) => setHfToken(e.target.value)}
-                placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  fontSize: '0.9rem'
-                }}
-              />
-              <small style={{ 
-                color: 'rgba(255, 255, 255, 0.6)', 
-                display: 'block', 
-                marginTop: '5px' 
-              }}>
-                Obtenez votre token sur <a href="https://huggingface.co/settings/tokens" target="_blank" style={{ color: '#4ecdc4' }}>huggingface.co/settings/tokens</a>
-              </small>
-            </div>
-            <button
-              onClick={saveToken}
-              style={{
-                background: 'linear-gradient(45deg, #10b981, #34d399)',
-                border: 'none',
-                borderRadius: '8px',
-                color: 'white',
-                padding: '12px 20px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              Sauvegarder
-            </button>
-          </div>
-        )}
-      </div>
-
       <div>
         <label style={{ 
           display: 'block', 
@@ -944,200 +707,10 @@ Exemples :
           transition: 'all 0.3s ease'
         }}
       >
-        {isGenerating ? '🎵 Composition en cours...' : 
-         localStorage.getItem('hf_token') ? '🎼 Générer avec Hugging Face' : '🎼 Générer (simulation)'}
+        {isGenerating ? '🎵 Composition en cours...' : '🎼 Générer la musique'}
       </button>
 
-      {/* Player musical */}
-      {(audioData || result) && (
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.4)',
-          borderRadius: '20px',
-          padding: '30px',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '15px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ fontSize: '2.5rem' }}>🎵</div>
-            <div>
-              <h3 style={{
-                color: 'white',
-                fontSize: '1.3rem',
-                fontWeight: '600',
-                marginBottom: '5px'
-              }}>
-                Composition {style.charAt(0).toUpperCase() + style.slice(1)}
-              </h3>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '1rem',
-                margin: 0
-              }}>
-                {prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt}
-              </p>
-            </div>
-          </div>
-
-          {/* Waveform */}
-          <div style={{
-            height: '80px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'end',
-            padding: '10px',
-            gap: '2px',
-            marginBottom: '20px'
-          }}>
-            {waveformBars.map((height, index) => (
-              <div
-                key={index}
-                style={{
-                  width: '3px',
-                  height: `${isPlaying ? height : height * 0.3}%`,
-                  background: isPlaying 
-                    ? 'linear-gradient(to top, #8b5cf6, #ec4899)' 
-                    : 'rgba(255, 255, 255, 0.3)',
-                  borderRadius: '2px',
-                  transition: 'all 0.3s ease'
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Barre de progression */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            height: '6px',
-            borderRadius: '3px',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              background: 'linear-gradient(45deg, #8b5cf6, #ec4899)',
-              height: '100%',
-              width: audioData ? `${(currentTime / audioData.duration) * 100}%` : '0%',
-              borderRadius: '3px',
-              transition: 'width 0.1s ease'
-            }} />
-          </div>
-
-          {/* Contrôles */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '15px',
-            marginBottom: '25px'
-          }}>
-            <button 
-              onClick={playMusic}
-              disabled={isPlaying || !audioData}
-              style={{
-                background: isPlaying || !audioData
-                  ? 'rgba(108, 117, 125, 0.5)' 
-                  : 'linear-gradient(45deg, #10b981, #34d399)',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '25px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: isPlaying || !audioData ? 'not-allowed' : 'pointer',
-                fontSize: '1rem'
-              }}
-            >
-              {isPlaying ? '🎵 En lecture...' : '▶️ Jouer'}
-            </button>
-
-            <button 
-              onClick={stopMusic}
-              style={{
-                background: 'linear-gradient(45deg, #ef4444, #dc2626)',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '25px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '1rem'
-              }}
-            >
-              ⏹️ Stop
-            </button>
-
-            <button 
-              onClick={() => {
-                const musicInfo = {
-                  title: `Composition ${style}`,
-                  style, duration, prompt,
-                  generatedAt: new Date().toISOString()
-                };
-                const blob = new Blob([JSON.stringify(musicInfo, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `music_${style}_${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              style={{
-                background: 'linear-gradient(45deg, #3b82f6, #1d4ed8)',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '25px',
-                color: 'white',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '1rem'
-              }}
-            >
-              💾 Télécharger
-            </button>
-          </div>
-
-          {/* Infos */}
-          {audioData && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-              gap: '15px'
-            }}>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px',
-                borderRadius: '10px',
-                textAlign: 'center'
-              }}>
-                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Style</div>
-                <div style={{ color: 'white', fontWeight: '600' }}>{style}</div>
-              </div>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px',
-                borderRadius: '10px',
-                textAlign: 'center'
-              }}>
-                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Durée</div>
-                <div style={{ color: 'white', fontWeight: '600' }}>{duration}s</div>
-              </div>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px',
-                borderRadius: '10px',
-                textAlign: 'center'
-              }}>
-                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>BPM</div>
-                <div style={{ color: 'white', fontWeight: '600' }}>{audioData.bpm}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Résultat */}
+      {/* Résultat avec lecteur audio */}
       {result && (
         <div style={{
           background: 'rgba(0, 0, 0, 0.3)',
@@ -1161,8 +734,39 @@ Exemples :
           }}>
             {result}
           </div>
+
+          {/* 🎵 LECTEUR AUDIO POUR SIMULATION AVANCÉE */}
+          {window.lastMusicGeneration && window.lastMusicGeneration.audioBase64 && (
+            <div style={{ marginTop: '20px' }}>
+              <div style={{
+                background: 'linear-gradient(45deg, #8b5cf6, #ec4899)',
+                color: 'white',
+                padding: '15px',
+                borderRadius: '10px',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}>
+                🎵 <strong>VOTRE MUSIQUE GÉNÉRÉE</strong> - Multi-instrumental
+              </div>
+              
+              <audio 
+                controls 
+                style={{ width: '100%' }}
+                src={`data:audio/wav;base64,${window.lastMusicGeneration.audioBase64}`}
+              >
+                Votre navigateur ne supporte pas l'élément audio.
+              </audio>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+// Fonctions vides pour les autres interfaces (vous pouvez les développer plus tard)
+function VoiceAIInterface({ onGenerate, isGenerating, result }) {
+  return (
+    <div style={{ textAlign: 'center', color: 'white' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🔁</div>
+      <h3>Synthèse Vocale IA</h3>
