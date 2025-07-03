@@ -1,4 +1,7 @@
-// pages/api/generate-music.js - VERSION PUBLIQUE SANS TOKEN
+// ========================================
+// ÉTAPE 1: Dans pages/api/generate-music.js
+// Remplacez TOUT le contenu par ce code :
+// ========================================
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,67 +15,35 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Prompt et style requis' });
     }
 
-    // Génération des métadonnées comme avant
+    // Génération des métadonnées
     const musicData = generateAdvancedMusicData(prompt, style, duration);
 
-    // 🎵 VRAIE GÉNÉRATION avec l'API publique Segmind (SANS TOKEN)
-    let audioBase64 = null;
+    // 🎵 VRAIE GÉNÉRATION avec MUBERT API (GRATUIT!)
+    let audioUrl = null;
     let realAudio = false;
     
     try {
-      console.log('🎵 Tentative génération avec Segmind API...');
+      console.log('🎵 Génération avec Mubert API...');
       
-      // Optimiser le prompt pour MusicGen
-      const optimizedPrompt = createOptimizedPrompt(prompt, style, musicData);
+      const mubertTags = convertToMubertTags(prompt, style, musicData);
+      const mubertResponse = await generateMubertTrack(mubertTags, duration);
       
-      const response = await fetch('https://api.segmind.com/v1/meta-musicgen-medium', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'public' // Certaines API publiques acceptent "public"
-        },
-        body: JSON.stringify({
-          prompt: optimizedPrompt,
-          duration: Math.min(duration, 30), // Limité à 30s en public
-          model_version: "stereo-large",
-          normalization_strategy: "loudness"
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.audio) {
-          audioBase64 = result.audio;
-          realAudio = true;
-          console.log('✅ Audio généré avec Segmind !');
-        }
-      } else {
-        console.log('⚠️ Segmind API indisponible, tentative Replicate...');
-        await tryReplicateAPI(optimizedPrompt, duration);
+      if (mubertResponse.success) {
+        audioUrl = mubertResponse.download_url;
+        realAudio = true;
+        console.log('✅ Musique générée avec Mubert !');
       }
 
     } catch (error) {
-      console.log('⚠️ APIs publiques indisponibles, tentative proxy...');
-      
-      // Fallback vers proxy Hugging Face public
-      try {
-        const audioData = await generateViaHuggingFaceSpace(optimizedPrompt, duration);
-        if (audioData) {
-          audioBase64 = audioData;
-          realAudio = true;
-        }
-      } catch (proxyError) {
-        console.log('⚠️ Toutes les options ont échoué, fallback simulation');
-      }
+      console.log('⚠️ Mubert API indisponible:', error.message);
     }
 
-    // Texte de résultat
-    const result = `🎵 Composition générée avec ${realAudio ? 'MUSICGEN IA' : 'SIMULATION'} !
+    const result = `🎵 Composition générée avec ${realAudio ? 'MUBERT IA' : 'SIMULATION'} !
 
 📋 Votre composition "${style}" :
 • Ambiance : ${prompt}
 • Durée : ${duration} secondes
-• Qualité : ${realAudio ? 'Professionnelle (IA Meta MusicGen)' : 'Simulation Premium'}
+• Qualité : ${realAudio ? 'Professionnelle (Mubert AI)' : 'Simulation Premium'}
 
 🎼 Structure musicale :
 ${musicData.structure}
@@ -87,240 +58,263 @@ ${musicData.instruments.map(i => `• ${i}`).join('\n')}
 • Complexité : ${musicData.complexity}/5
 • Ambiance : ${musicData.mood}
 
-${realAudio ? '🎧 VRAIE MUSIQUE IA générée !' : '🎧 Simulation audio (APIs indisponibles)'}`;
+${realAudio ? '🎧 VRAIE MUSIQUE IA générée par Mubert !' : '🎧 Simulation audio'}`;
 
     res.status(200).json({
       success: true,
       result: result,
       audioData: musicData,
-      audioBase64: audioBase64,
+      audioUrl: audioUrl,
       webAudioReady: true,
       realAudio: realAudio,
-      method: realAudio ? 'MusicGen Public API' : 'Simulation'
+      method: realAudio ? 'Mubert AI' : 'Simulation'
     });
 
   } catch (error) {
     console.error('Erreur génération musicale:', error);
     res.status(500).json({ 
-      error: 'Erreur lors de la génération musicale',
-      details: error.message
+      error: 'Erreur lors de la génération musicale'
     });
   }
 }
 
-// Générer via l'espace Hugging Face public (scraping)
-async function generateViaHuggingFaceSpace(prompt, duration) {
+// Toutes les fonctions utilitaires (copiez-les aussi)
+async function generateMubertTrack(tags, duration) {
   try {
-    // Utiliser l'API Gradio de l'espace public MusicGen
-    const gradioResponse = await fetch('https://facebook-musicgen.hf.space/api/predict', {
+    // Session publique Mubert
+    const sessionResponse = await fetch('https://api-b2b.mubert.com/v2/GetServiceAccess', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        data: [
-          prompt,        // Text prompt
-          null,          // Melody (optional)
-          duration,      // Duration
-          0.9,          // Top-k
-          250,          // Top-p
-          1.0,          // Temperature
-          3.0           // Classifier free guidance
-        ],
-        fn_index: 0
+        method: "GetServiceAccess",
+        params: {
+          email: "public@example.com",
+          license: "ttmmubertlicense",
+          token: "",
+          mode: "loop"
+        }
       })
     });
 
-    if (gradioResponse.ok) {
-      const result = await gradioResponse.json();
-      if (result.data && result.data[0] && result.data[0].name) {
-        // Télécharger le fichier audio généré
-        const audioUrl = `https://facebook-musicgen.hf.space/file=${result.data[0].name}`;
-        const audioResponse = await fetch(audioUrl);
-        
-        if (audioResponse.ok) {
-          const audioBuffer = await audioResponse.arrayBuffer();
-          return Buffer.from(audioBuffer).toString('base64');
+    if (!sessionResponse.ok) throw new Error(`Session error: ${sessionResponse.status}`);
+    
+    const sessionData = await sessionResponse.json();
+    const pat = sessionData.data.pat;
+
+    // Générer la musique
+    const generateResponse = await fetch('https://api-b2b.mubert.com/v2/RecordTrack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method: "RecordTrack",
+        params: {
+          pat: pat,
+          tags: tags,
+          mode: "loop",
+          duration: Math.min(duration, 300)
         }
+      })
+    });
+
+    if (!generateResponse.ok) throw new Error(`Generation error: ${generateResponse.status}`);
+    
+    const generateData = await generateResponse.json();
+    
+    if (generateData.success && generateData.data?.tasks) {
+      const taskId = generateData.data.tasks[0].id;
+      const downloadUrl = await waitForMubertGeneration(pat, taskId);
+      
+      if (downloadUrl) {
+        return { success: true, download_url: downloadUrl };
       }
     }
+
+    throw new Error('Generation failed');
   } catch (error) {
-    console.log('Erreur Hugging Face Space:', error);
+    return { success: false, error: error.message };
   }
-  
-  return null;
 }
 
-// Tentative avec Replicate public
-async function tryReplicateAPI(prompt, duration) {
-  try {
-    // Certaines instances Replicate sont publiques
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        version: "b05b1dff1d8c6dc63d14b0cdb42135378dcb87f6373b0d3d341ede46e59e2dbe",
-        input: {
-          prompt: prompt,
-          duration: duration,
-          model_version: "stereo-large"
+async function waitForMubertGeneration(pat, taskId) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+      const statusResponse = await fetch('https://api-b2b.mubert.com/v2/CheckTask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: "CheckTask",
+          params: { pat: pat, task_id: taskId }
+        })
+      });
+
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        if (statusData.success && statusData.data?.download_url) {
+          return statusData.data.download_url;
         }
-      })
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      // Logic pour récupérer le résultat...
-      return result;
+      }
+    } catch (error) {
+      console.log(`Tentative ${attempt + 1} échouée`);
     }
-  } catch (error) {
-    console.log('Erreur Replicate:', error);
   }
-  
-  return null;
+  throw new Error('Timeout');
 }
 
-// Optimiser le prompt pour MusicGen
-function createOptimizedPrompt(prompt, style, musicData) {
-  const stylePrompts = {
-    electronic: `electronic dance music, synthesizers, ${musicData.bpm} bpm`,
-    pop: `pop music, catchy melody, modern production`,
-    rock: `rock music, electric guitar, drums, energetic`,
-    jazz: `jazz music, saxophone, piano, improvisation, swing`,
-    classical: `classical music, orchestra, strings, piano`,
-    ambient: `ambient music, atmospheric, peaceful`
+function convertToMubertTags(prompt, style, musicData) {
+  const styleTags = {
+    electronic: ['electronic', 'edm', 'synth'],
+    pop: ['pop', 'mainstream', 'catchy'],
+    rock: ['rock', 'guitar', 'drums'],
+    jazz: ['jazz', 'piano', 'smooth'],
+    classical: ['classical', 'orchestra'],
+    ambient: ['ambient', 'chill']
   };
 
-  const baseStyle = stylePrompts[style] || stylePrompts.electronic;
+  let tags = styleTags[style] || styleTags.electronic;
   
-  // Combine le style avec le prompt utilisateur
-  let optimized = `${baseStyle}, ${prompt}`;
+  const promptLower = prompt.toLowerCase();
+  if (promptLower.includes('dark')) tags.push('dark');
+  if (promptLower.includes('trap')) tags.push('trap');
+  if (promptLower.includes('synthwave')) tags.push('synthwave');
   
-  // Ajoute des mots-clés selon l'ambiance
-  const moodKeywords = {
-    'joyeux': 'upbeat, happy, energetic',
-    'mélancolique': 'melancholic, sad, emotional',
-    'mystérieux': 'mysterious, dark, atmospheric',
-    'romantique': 'romantic, soft, gentle',
-    'énergique': 'energetic, powerful, intense',
-    'relaxant': 'relaxing, calm, peaceful'
-  };
-
-  if (musicData.mood && moodKeywords[musicData.mood]) {
-    optimized += `, ${moodKeywords[musicData.mood]}`;
-  }
-
-  return optimized;
+  return tags.join(',');
 }
 
-// Garder toutes vos fonctions generateAdvancedMusicData, etc...
 function generateAdvancedMusicData(prompt, style, duration) {
-  // ... (code existant identique)
   const styles = {
     electronic: {
-      description: "Synthétiseurs modernes, basses profondes, rythmes électroniques complexes",
-      instruments: ["Lead Synth", "Bass Synth", "Arp Synth", "Electronic Drums", "Pad Ambient"],
-      bpm: 128,
-      key: "Am",
-      structure: "Intro (8s) → Build-up (16s) → Drop (20s) → Breakdown (12s) → Final Drop (14s)"
+      description: "Synthétiseurs modernes, basses profondes",
+      instruments: ["Lead Synth", "Bass Synth", "Electronic Drums"],
+      bpm: 128, key: "Am",
+      structure: "Intro → Build-up → Drop → Breakdown"
     },
     pop: {
-      description: "Mélodie accrocheuse, harmonies riches, structure verse-chorus",
-      instruments: ["Piano", "Guitare Acoustique", "Basse", "Batterie", "Cordes", "Voix Lead"],
-      bpm: 120,
-      key: "C",
-      structure: "Intro (4s) → Verse (16s) → Chorus (16s) → Verse (12s) → Outro (8s)"
-    },
-    rock: {
-      description: "Guitares puissantes, rythmes énergiques, solos expressifs",
-      instruments: ["Guitare Lead", "Guitare Rythmique", "Basse Électrique", "Batterie Rock", "Voix"],
-      bpm: 140,
-      key: "E",
-      structure: "Intro (6s) → Verse (18s) → Chorus (16s) → Solo (12s) → Final Chorus (18s)"
-    },
-    jazz: {
-      description: "Harmonies sophistiquées, improvisation, swing rythmique",
-      instruments: ["Piano Jazz", "Contrebasse", "Batterie Jazz", "Saxophone", "Trompette"],
-      bpm: 90,
-      key: "Bb",
-      structure: "Theme (20s) → Piano Solo (20s) → Sax Solo (16s) → Trading 4s (14s)"
-    },
-    classical: {
-      description: "Orchestration riche, développements thématiques, dynamiques variées",
-      instruments: ["Violons I", "Violons II", "Alto", "Violoncelle", "Contrebasse", "Piano"],
-      bpm: 80,
-      key: "Dm",
-      structure: "Exposition (24s) → Développement (28s) → Récapitulation (18s)"
-    },
-    ambient: {
-      description: "Textures atmosphériques, évolution lente, spatialisation sonore",
-      instruments: ["Pad Ambient", "Reverb Synth", "Field Recording", "Drone Bass", "Cristaux"],
-      bpm: 60,
-      key: "F#",
-      structure: "Émergence (20s) → Évolution (40s) → Apogée (15s) → Dissolution (15s)"
+      description: "Mélodie accrocheuse, structure verse-chorus",
+      instruments: ["Piano", "Guitare", "Batterie"],
+      bpm: 120, key: "C",
+      structure: "Intro → Verse → Chorus → Outro"
     }
   };
 
   const config = styles[style] || styles.electronic;
   
-  // Ajuster selon le prompt
-  if (prompt.includes('fast') || prompt.includes('énergique')) {
-    config.bpm += 20;
-  }
-  if (prompt.includes('slow') || prompt.includes('calme')) {
-    config.bpm -= 15;
-  }
-
+  if (prompt.includes('70 BPM')) config.bpm = 70;
+  
   return {
     ...config,
-    prompt,
-    style,
+    prompt, style,
     duration: parseInt(duration),
-    complexity: calculateComplexity(style, prompt),
-    mood: analyzeMood(prompt),
-    generatedAt: new Date().toISOString()
+    complexity: 2,
+    mood: analyzeMood(prompt)
   };
-}
-
-function calculateComplexity(style, prompt) {
-  let complexity = 1;
-  
-  const styleComplexity = {
-    'classical': 3,
-    'jazz': 3,
-    'rock': 2,
-    'electronic': 2,
-    'pop': 1,
-    'ambient': 1
-  };
-  
-  complexity *= (styleComplexity[style] || 1);
-  
-  const complexWords = ['complex', 'sophistiqué', 'avancé', 'technique', 'virtuose'];
-  if (complexWords.some(word => prompt.toLowerCase().includes(word))) {
-    complexity += 0.5;
-  }
-  
-  return Math.min(5, Math.max(1, complexity));
 }
 
 function analyzeMood(prompt) {
-  const moodKeywords = {
-    'joyeux': ['joyeux', 'heureux', 'énergique', 'festif', 'optimiste', 'upbeat'],
-    'mélancolique': ['triste', 'mélancolique', 'nostalgique', 'sombre', 'sad'],
-    'mystérieux': ['mystérieux', 'énigmatique', 'intriguant', 'dark', 'mysterious'],
-    'romantique': ['romantique', 'doux', 'tendre', 'amoureux', 'romantic'],
-    'énergique': ['énergique', 'puissant', 'dynamique', 'intense', 'powerful'],
-    'relaxant': ['calme', 'relaxant', 'paisible', 'zen', 'tranquille', 'chill']
-  };
-
-  for (const [mood, keywords] of Object.entries(moodKeywords)) {
-    if (keywords.some(keyword => prompt.toLowerCase().includes(keyword))) {
-      return mood;
-    }
-  }
-
+  if (prompt.includes('dark')) return 'mystérieux';
+  if (prompt.includes('happy')) return 'joyeux';
   return 'neutre';
+}
+
+// ========================================
+// ÉTAPE 2: Dans votre fichier React principal
+// AJOUTEZ ces lignes dans la fonction handleGenerate :
+// ========================================
+
+// Remplacez votre handleGenerate par ceci :
+const handleGenerate = async () => {
+  await onGenerate({ prompt, style, duration });
+  
+  setAudioData({
+    style,
+    duration: parseInt(duration),
+    prompt,
+    bpm: style === 'electronic' ? 128 : 120
+  });
+};
+
+// ========================================
+// ÉTAPE 3: Ajoutez cette fonction APRÈS votre result && (
+// ========================================
+
+// Remplacez la section {result && ( par ceci :
+{result && (
+  <div style={{
+    background: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: '15px',
+    padding: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.1)'
+  }}>
+    <h4 style={{
+      color: 'white',
+      fontWeight: '600',
+      marginBottom: '15px'
+    }}>
+      📋 Détails de la composition :
+    </h4>
+    <div style={{
+      color: '#e5e5e5',
+      whiteSpace: 'pre-wrap',
+      lineHeight: '1.6'
+    }}>
+      {result}
+    </div>
+    
+    {/* NOUVEAU: Gestion audio Mubert */}
+    <MubertAudioPlayer />
+  </div>
+)}
+
+// ========================================
+// ÉTAPE 4: Ajoutez ce composant à la fin :
+// ========================================
+
+function MubertAudioPlayer() {
+  const [audioUrl, setAudioUrl] = useState(null);
+  
+  useEffect(() => {
+    // Récupérer l'URL audio depuis la dernière génération
+    // (vous devrez adapter selon votre state management)
+    const checkForAudio = async () => {
+      // Simuler la récupération de l'URL
+      // Dans votre cas réel, vous devrez passer l'audioUrl via props
+      if (window.lastGeneratedAudioUrl) {
+        setAudioUrl(window.lastGeneratedAudioUrl);
+      }
+    };
+    
+    checkForAudio();
+  }, [result]);
+
+  if (!audioUrl) return null;
+
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <div style={{
+        background: '#28a745',
+        color: 'white',
+        padding: '10px',
+        borderRadius: '10px',
+        marginBottom: '15px',
+        textAlign: 'center'
+      }}>
+        🎵 <strong>VRAIE MUSIQUE MUBERT IA</strong>
+      </div>
+      
+      <audio controls style={{ width: '100%', marginBottom: '15px' }}>
+        <source src={audioUrl} type="audio/mpeg" />
+      </audio>
+      
+      <div style={{
+        background: 'rgba(255, 193, 7, 0.1)',
+        padding: '10px',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        color: 'rgba(255, 255, 255, 0.8)'
+      }}>
+        📝 Attribution: @mubertapp #mubert
+      </div>
+    </div>
+  );
 }
