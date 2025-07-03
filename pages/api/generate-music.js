@@ -1,4 +1,4 @@
-// pages/api/generate-music.js - BYPASS HUGGING FACE OFFICIEL
+// pages/api/generate-music.js – version musicgen.ai (public, sans token)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,112 +8,55 @@ export default async function handler(req, res) {
   try {
     const { prompt, style = 'electronic', duration = 30 } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt requis' });
+    if (!prompt || prompt.length < 5) {
+      return res.status(400).json({ error: 'Prompt invalide' });
     }
 
-    // Génération des métadonnées fictives
-    const musicData = generateAdvancedMusicData(prompt, style, duration);
-    const optimizedPrompt = `${style} music, ${prompt}, ${musicData.mood}`;
+    const fullPrompt = `${style} music, ${prompt}`;
 
-    // Appel au serveur proxy MusicGen
-    console.log('🔗 Génération réelle via proxy MusicGen...');
+    console.log("🎵 Appel à musicgen.ai...");
 
-    const proxyResponse = await fetch("https://freesoundapi.space/musicgen", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: optimizedPrompt })
+    const response = await fetch('https://musicgen.ai/api/musicgen', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ prompt: fullPrompt })
     });
 
-    if (!proxyResponse.ok) {
-      throw new Error("API proxy MusicGen HS");
+    if (!response.ok) {
+      throw new Error('Serveur musicgen.ai injoignable');
     }
 
-    const arrayBuffer = await proxyResponse.arrayBuffer();
-    const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
+    const data = await response.json();
 
-    // Format WAV encodé
-    const result = `🎵 Composition générée avec MUSICGEN PROXY !\n\n📋 Votre composition "${style}" :\n• Ambiance : ${prompt}\n• Durée : ${duration} secondes\n• Qualité : Réelle IA (WAV)\n\n🎼 Structure musicale :\n${musicData.structure}\n\n🎹 Instruments générés :\n${musicData.instruments.map(i => `• ${i}`).join('\n')}\n\n🎵 Caractéristiques :\n• Tempo : ${musicData.bpm} BPM\n• Tonalité : ${musicData.key}\n• Style : ${musicData.description}\n• Complexité : ${musicData.complexity}/5\n• Ambiance : ${musicData.mood}\n\n🎧 Audio réel encodé Base64 (WAV) prêt à jouer.`;
+    if (!data || !data.output || !data.output.url) {
+      throw new Error('Aucune URL audio retournée');
+    }
+
+    const audioURL = data.output.url;
+
+    // Télécharger le mp3 et encoder en base64
+    const audioResponse = await fetch(audioURL);
+    const audioBuffer = await audioResponse.arrayBuffer();
+    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+
+    const resultText = `🎵 Composition générée avec musicgen.ai ✅\n\n• Style : ${style}\n• Prompt : ${prompt}\n• Durée estimée : ${duration} sec\n• Format : .mp3 (base64 encodé)\n• Source : ${audioURL}`;
 
     res.status(200).json({
       success: true,
-      result,
+      result: resultText,
       audioBase64,
       realAudio: true,
-      webAudioReady: true,
-      optimizedPrompt,
-      audioData: musicData
+      audioUrl: audioURL,
+      mimeType: "audio/mpeg"
     });
 
-  } catch (error) {
-    console.error('❌ Erreur MusicGen Proxy :', error);
+  } catch (err) {
+    console.error('❌ Erreur musicgen.ai :', err);
     res.status(500).json({
       error: 'Erreur serveur lors de la génération musicale',
-      details: error.message
+      details: err.message
     });
   }
-}
-
-// ———————————————————————————————————
-// MÉTADONNÉES MUSICALES SIMULÉES
-function generateAdvancedMusicData(prompt, style, duration) {
-  const styles = {
-    electronic: {
-      description: "Synthétiseurs modernes, basses profondes, rythmes électroniques complexes",
-      instruments: ["Lead Synth", "Bass Synth", "Arp Synth", "Electronic Drums", "Pad Ambient"],
-      bpm: 128,
-      key: "Am",
-      structure: "Intro (8s) → Build-up (16s) → Drop (20s) → Breakdown (12s) → Final Drop (14s)"
-    },
-    pop: {
-      description: "Mélodie accrocheuse, harmonies riches, structure verse-chorus",
-      instruments: ["Piano", "Guitare Acoustique", "Basse", "Batterie", "Cordes", "Voix Lead"],
-      bpm: 120,
-      key: "C",
-      structure: "Intro (4s) → Verse (16s) → Chorus (16s) → Verse (12s) → Outro (8s)"
-    },
-    jazz: {
-      description: "Improvisation libre, textures complexes, rythme swing",
-      instruments: ["Piano", "Contrebasse", "Saxophone", "Batterie Jazz", "Trompette"],
-      bpm: 90,
-      key: "Bb",
-      structure: "Intro (10s) → Thème (20s) → Solo (30s) → Outro (10s)"
-    }
-  };
-
-  const config = styles[style] || styles.electronic;
-  return {
-    ...config,
-    style,
-    prompt,
-    duration,
-    complexity: calculateComplexity(style, prompt),
-    mood: analyzeMood(prompt),
-    generatedAt: new Date().toISOString()
-  };
-}
-
-function calculateComplexity(style, prompt) {
-  let complexity = 1;
-  if (prompt.toLowerCase().includes("complex") || prompt.toLowerCase().includes("virtuose")) {
-    complexity += 1;
-  }
-  return Math.min(5, complexity);
-}
-
-function analyzeMood(prompt) {
-  const moods = {
-    joyeux: ['joyeux', 'heureux', 'festif'],
-    triste: ['triste', 'mélancolique', 'sombre'],
-    mystérieux: ['mystérieux', 'dark', 'inquiétant'],
-    romantique: ['romantique', 'tendre', 'amoureux'],
-    énergique: ['énergique', 'dynamique', 'rapide'],
-    relaxant: ['calme', 'zen', 'chill']
-  };
-  for (const [label, keywords] of Object.entries(moods)) {
-    if (keywords.some(k => prompt.toLowerCase().includes(k))) {
-      return label;
-    }
-  }
-  return 'neutre';
 }
