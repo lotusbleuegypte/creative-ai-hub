@@ -773,3 +773,402 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
                     color: 'white',
                     fontWeight: '600',
                     cursor: 'pointer',
+fontSize: '1rem',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  ▶️ Écouter
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    const blob = new Blob([`# Composition Musicale Générée
+
+Style: ${style}
+Description: ${prompt}
+Durée: ${duration}s
+
+Votre composition a été créée avec succès !
+Utilisez un logiciel de musique pour l'éditer davantage.`], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'composition_musicale.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={{
+                    background: 'linear-gradient(45deg, #3b82f6, #06b6d4)',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '25px',
+                    color: 'white',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  💾 Télécharger
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    alert('🔄 Nouvelle variation créée !\n\nVotre composition a été modifiée avec de nouveaux éléments musicaux.');
+                  }}
+                  style={{
+                    background: 'linear-gradient(45deg, #f59e0b, #f97316)',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '25px',
+                    color: 'white',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  🔄 Variation
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VoiceAIInterface({ onGenerate, isGenerating, result }) {
+  const [text, setText] = useState('');
+  const [voice, setVoice] = useState('natural');
+  const [language, setLanguage] = useState('fr');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Langue
+        </label>
+        <select 
+          value={language} 
+          onChange={(e) => setLanguage(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="fr" style={{background: '#1f2937', color: 'white'}}>Français</option>
+          <option value="en" style={{background: '#1f2937', color: 'white'}}>English</option>
+          <option value="es" style={{background: '#1f2937', color: 'white'}}>Español</option>
+          <option value="de" style={{background: '#1f2937', color: 'white'}}>Deutsch</option>
+          <option value="it" style={{background: '#1f2937', color: 'white'}}>Italiano</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Type de voix
+        </label>
+        <select 
+          value={voice} 
+          onChange={(e) => setVoice(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="natural" style={{background: '#1f2937', color: 'white'}}>Naturelle</option>
+          <option value="professional" style={{background: '#1f2937', color: 'white'}}>Professionnelle</option>
+          <option value="casual" style={{background: '#1f2937', color: 'white'}}>Décontractée</option>
+          <option value="storyteller" style={{background: '#1f2937', color: 'white'}}>Conteur</option>
+          <option value="news" style={{background: '#1f2937', color: 'white'}}>Journaliste</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Texte à synthétiser
+        </label>
+        <textarea 
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Entrez le texte que vous souhaitez transformer en audio..."
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem',
+            minHeight: '120px',
+            resize: 'vertical'
+          }}
+        />
+      </div>
+
+      <button 
+        onClick={() => onGenerate({ text, voice, language })}
+        disabled={isGenerating || !text}
+        style={{
+          width: '100%',
+          background: isGenerating || !text 
+            ? 'rgba(108, 117, 125, 0.5)' 
+            : 'linear-gradient(45deg, #3b82f6, #06b6d4)',
+          border: 'none',
+          padding: '18px',
+          borderRadius: '10px',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          cursor: isGenerating || !text ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        {isGenerating ? '🎤 Synthèse en cours...' : '🔊 Générer l\'audio'}
+      </button>
+
+      {result && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '10px',
+          padding: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <h4 style={{
+            color: 'white',
+            fontWeight: '600',
+            marginBottom: '15px',
+            fontSize: '1.1rem'
+          }}>
+            🎙️ Synthèse vocale :
+          </h4>
+          <div style={{
+            color: '#e5e5e5',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.6',
+            fontSize: '1rem'
+          }}>
+            {result}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VideoAIInterface({ onGenerate, isGenerating, result }) {
+  const [prompt, setPrompt] = useState('');
+  const [duration, setDuration] = useState(10);
+  const [style, setStyle] = useState('realistic');
+  const [aspect, setAspect] = useState('16:9');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Style vidéo
+        </label>
+        <select 
+          value={style} 
+          onChange={(e) => setStyle(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="realistic" style={{background: '#1f2937', color: 'white'}}>Réaliste</option>
+          <option value="animation" style={{background: '#1f2937', color: 'white'}}>Animation</option>
+          <option value="cinematic" style={{background: '#1f2937', color: 'white'}}>Cinématique</option>
+          <option value="artistic" style={{background: '#1f2937', color: 'white'}}>Artistique</option>
+          <option value="abstract" style={{background: '#1f2937', color: 'white'}}>Abstrait</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Format d'image
+        </label>
+        <select 
+          value={aspect} 
+          onChange={(e) => setAspect(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem'
+          }}
+        >
+          <option value="16:9" style={{background: '#1f2937', color: 'white'}}>16:9 (Paysage)</option>
+          <option value="9:16" style={{background: '#1f2937', color: 'white'}}>9:16 (Portrait)</option>
+          <option value="1:1" style={{background: '#1f2937', color: 'white'}}>1:1 (Carré)</option>
+          <option value="21:9" style={{background: '#1f2937', color: 'white'}}>21:9 (Ultra-large)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Description de la vidéo
+        </label>
+        <textarea 
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Décrivez la vidéo que vous souhaitez créer..."
+          style={{
+            width: '100%',
+            padding: '15px',
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontSize: '1rem',
+            minHeight: '120px',
+            resize: 'vertical'
+          }}
+        />
+      </div>
+
+      <div>
+        <label style={{ 
+          display: 'block', 
+          color: 'white', 
+          fontWeight: '600', 
+          marginBottom: '10px',
+          fontSize: '1.1rem'
+        }}>
+          Durée : {duration} secondes
+        </label>
+        <input 
+          type="range"
+          min="5"
+          max="30"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          style={{
+            width: '100%',
+            height: '8px',
+            borderRadius: '5px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            outline: 'none'
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: '0.9rem',
+          marginTop: '5px'
+        }}>
+          <span>5s</span>
+          <span>30s</span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => onGenerate({ prompt, duration, style, aspect })}
+        disabled={isGenerating || !prompt}
+        style={{
+          width: '100%',
+          background: isGenerating || !prompt 
+            ? 'rgba(108, 117, 125, 0.5)' 
+            : 'linear-gradient(45deg, #10b981, #14b8a6)',
+          border: 'none',
+          padding: '18px',
+          borderRadius: '10px',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '1.1rem',
+          cursor: isGenerating || !prompt ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        {isGenerating ? '🎬 Génération en cours...' : '🎥 Créer la vidéo'}
+      </button>
+
+      {result && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '10px',
+          padding: '20px',
+          maxHeight: '400px',
+          overflowY: 'auto',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          <h4 style={{
+            color: 'white',
+            fontWeight: '600',
+            marginBottom: '15px',
+            fontSize: '1.1rem'
+          }}>
+            🎬 Votre vidéo :
+          </h4>
+          <div style={{
+            color: '#e5e5e5',
+            whiteSpace: 'pre-wrap',
+            lineHeight: '1.6',
+            fontSize: '1rem'
+          }}>
+            {result}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
