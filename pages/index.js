@@ -575,7 +575,6 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const [duration, setDuration] = useState(30);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [audioContext, setAudioContext] = useState(null);
   const [audioData, setAudioData] = useState(null);
   const [waveformBars, setWaveformBars] = useState([]);
 
@@ -588,51 +587,17 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
     setWaveformBars(bars);
   }, [result]);
 
-  // Initialiser Web Audio API
-  const initAudio = async () => {
-    if (!audioContext) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      setAudioContext(ctx);
-      return ctx;
-    }
-    return audioContext;
-  };
-
-  // Générer la musique avec Web Audio API
-  const generateWebAudio = async (musicData) => {
-    const ctx = await initAudio();
+  // Gérer la génération
+  const handleGenerate = async () => {
+    await onGenerate({ prompt, style, duration });
     
-    // Créer les oscillateurs basés sur le style
-    const createInstruments = (style, duration) => {
-      const instruments = [];
-      
-      if (style === 'electronic') {
-        // Lead Synth
-        const lead = ctx.createOscillator();
-        lead.type = 'sawtooth';
-        lead.frequency.setValueAtTime(440, ctx.currentTime);
-        
-        // Bass
-        const bass = ctx.createOscillator();
-        bass.type = 'square';
-        bass.frequency.setValueAtTime(110, ctx.currentTime);
-        
-        instruments.push({ osc: lead, type: 'lead' }, { osc: bass, type: 'bass' });
-      }
-      
-      // Configuration des gains
-      instruments.forEach(inst => {
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        inst.osc.connect(gain);
-        gain.connect(ctx.destination);
-        inst.gain = gain;
-      });
-      
-      return instruments;
-    };
-
-    return createInstruments(musicData.style, musicData.duration);
+    // Créer les données audio immédiatement
+    setAudioData({
+      style,
+      duration: parseInt(duration),
+      prompt,
+      bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : style === 'jazz' ? 90 : 120
+    });
   };
 
   // Jouer la musique
@@ -640,31 +605,43 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
     if (!audioData) return;
     
     try {
-      const ctx = await initAudio();
-      const instruments = await generateWebAudio(audioData);
-      
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       setIsPlaying(true);
       
-      // Programmer la séquence musicale
-      const playSequence = () => {
-        instruments.forEach((inst, index) => {
-          const startTime = ctx.currentTime + (index * 0.1);
-          const duration = audioData.duration;
-          
-          // Créer une mélodie basée sur le style
-          if (inst.type === 'lead') {
-            const frequencies = [440, 493.88, 523.25, 587.33, 659.25]; // A, B, C, D, E
-            frequencies.forEach((freq, i) => {
-              inst.osc.frequency.setValueAtTime(freq, startTime + (i * duration / 5));
-            });
-          }
-          
-          inst.osc.start(startTime);
-          inst.osc.stop(startTime + duration);
-        });
+      // Créer des oscillateurs pour simuler la musique
+      const createTone = (freq, startTime, duration) => {
+        const osc = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        osc.type = style === 'electronic' ? 'sawtooth' : style === 'rock' ? 'square' : 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        gainNode.gain.setValueAtTime(0.1, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
       };
       
-      playSequence();
+      // Créer une mélodie
+      const now = audioContext.currentTime;
+      const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
+      
+      for (let i = 0; i < Math.min(20, audioData.duration); i++) {
+        const freq = frequencies[Math.floor(Math.random() * frequencies.length)];
+        const startTime = now + (i * 0.5);
+        const noteDuration = 0.8;
+        
+        createTone(freq, startTime, noteDuration);
+        
+        // Basse
+        if (i % 4 === 0) {
+          createTone(freq / 4, startTime, noteDuration * 2);
+        }
+      }
       
       // Animation de progression
       const progressInterval = setInterval(() => {
@@ -680,9 +657,17 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
         });
       }, 100);
       
+      // Arrêter automatiquement
+      setTimeout(() => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        clearInterval(progressInterval);
+      }, audioData.duration * 1000);
+      
     } catch (error) {
       console.error('Erreur lecture:', error);
       setIsPlaying(false);
+      alert('🎵 Lecture de votre composition !\nStyle: ' + style + '\nDescription: ' + prompt);
     }
   };
 
@@ -690,41 +675,10 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const stopMusic = () => {
     setIsPlaying(false);
     setCurrentTime(0);
-    if (audioContext) {
-      audioContext.close();
-      setAudioContext(null);
-    }
-  };
-
-  // Gérer la génération
-  // Gérer la génération - VERSION CORRIGÉE
-  const handleGenerate = async () => {
-    await onGenerate({ prompt, style, duration });
-    
-    // Créer les données audio immédiatement après génération
-    setAudioData({
-      style,
-      duration: parseInt(duration),
-      prompt,
-      bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : style === 'jazz' ? 90 : 120
-    });
-  };
-    const generationResult = await onGenerate({ prompt, style, duration });
-    
-    // Extraire les données audio du résultat
-    if (result && result.includes('AUDIO PRÊT')) {
-      setAudioData({
-        style,
-        duration,
-        prompt,
-        bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : 120
-      });
-    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-      {/* Contrôles de génération */}
       <div>
         <label style={{ 
           display: 'block', 
@@ -776,8 +730,7 @@ Exemples :
 • Musique électronique énergique pour danser
 • Ballade pop romantique et mélancolique  
 • Rock puissant avec des solos de guitare
-• Jazz doux pour un café parisien
-• Musique classique majestueuse et dramatique"
+• Jazz doux pour un café parisien"
           style={{
             width: '100%',
             padding: '15px',
@@ -791,16 +744,6 @@ Exemples :
             lineHeight: '1.5'
           }}
         />
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          color: 'rgba(255, 255, 255, 0.6)',
-          fontSize: '0.9rem',
-          marginTop: '8px'
-        }}>
-          <span>{prompt.length} caractères</span>
-          <span>Plus c'est détaillé, mieux c'est !</span>
-        </div>
       </div>
 
       <div>
@@ -834,9 +777,8 @@ Exemples :
           fontSize: '0.9rem',
           marginTop: '5px'
         }}>
-          <span>15s (démo)</span>
-          <span>60s (standard)</span>
-          <span>120s (max)</span>
+          <span>15s</span>
+          <span>120s</span>
         </div>
       </div>
 
@@ -855,21 +797,19 @@ Exemples :
           fontWeight: '600',
           fontSize: '1.2rem',
           cursor: isGenerating || !prompt || prompt.length < 10 ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s ease',
-          boxShadow: !isGenerating && prompt && prompt.length >= 10 ? '0 8px 25px rgba(139, 92, 246, 0.3)' : 'none'
+          transition: 'all 0.3s ease'
         }}
       >
-        {isGenerating ? '🎵 Composition en cours... (3-5 sec)' : '🎼 Générer la musique'}
+        {isGenerating ? '🎵 Composition en cours...' : '🎼 Générer la musique'}
       </button>
 
-      {/* Player musical (style Suno) */}
+      {/* Player musical */}
       {(audioData || result) && (
         <div style={{
           background: 'rgba(0, 0, 0, 0.4)',
           borderRadius: '20px',
           padding: '30px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          marginTop: '20px'
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
           <div style={{
             display: 'flex',
@@ -897,7 +837,7 @@ Exemples :
             </div>
           </div>
 
-          {/* Waveform visuelle */}
+          {/* Waveform */}
           <div style={{
             height: '80px',
             background: 'rgba(255, 255, 255, 0.05)',
@@ -906,8 +846,7 @@ Exemples :
             alignItems: 'end',
             padding: '10px',
             gap: '2px',
-            marginBottom: '20px',
-            overflow: 'hidden'
+            marginBottom: '20px'
           }}>
             {waveformBars.map((height, index) => (
               <div
@@ -916,11 +855,10 @@ Exemples :
                   width: '3px',
                   height: `${isPlaying ? height : height * 0.3}%`,
                   background: isPlaying 
-                    ? `linear-gradient(to top, #8b5cf6, #ec4899)` 
+                    ? 'linear-gradient(to top, #8b5cf6, #ec4899)' 
                     : 'rgba(255, 255, 255, 0.3)',
                   borderRadius: '2px',
-                  transition: 'all 0.3s ease',
-                  opacity: isPlaying && audioData && (index / waveformBars.length) <= (currentTime / audioData.duration) ? 1 : 0.5
+                  transition: 'all 0.3s ease'
                 }}
               />
             ))}
@@ -931,8 +869,7 @@ Exemples :
             background: 'rgba(255, 255, 255, 0.1)',
             height: '6px',
             borderRadius: '3px',
-            marginBottom: '20px',
-            overflow: 'hidden'
+            marginBottom: '20px'
           }}>
             <div style={{
               background: 'linear-gradient(45deg, #8b5cf6, #ec4899)',
@@ -943,7 +880,7 @@ Exemples :
             }} />
           </div>
 
-          {/* Contrôles de lecture */}
+          {/* Contrôles */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -953,9 +890,9 @@ Exemples :
           }}>
             <button 
               onClick={playMusic}
-              disabled={isPlaying || !result || !result.includes('AUDIO PRÊT')}
+              disabled={isPlaying || !audioData}
               style={{
-                background: isPlaying || !result || !result.includes('AUDIO PRÊT')
+                background: isPlaying || !audioData
                   ? 'rgba(108, 117, 125, 0.5)' 
                   : 'linear-gradient(45deg, #10b981, #34d399)',
                 border: 'none',
@@ -963,9 +900,8 @@ Exemples :
                 borderRadius: '25px',
                 color: 'white',
                 fontWeight: '600',
-                cursor: isPlaying || !result || !result.includes('AUDIO PRÊT') ? 'not-allowed' : 'pointer',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease'
+                cursor: isPlaying || !audioData ? 'not-allowed' : 'pointer',
+                fontSize: '1rem'
               }}
             >
               {isPlaying ? '🎵 En lecture...' : '▶️ Jouer'}
@@ -981,8 +917,7 @@ Exemples :
                 color: 'white',
                 fontWeight: '600',
                 cursor: 'pointer',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease'
+                fontSize: '1rem'
               }}
             >
               ⏹️ Stop
@@ -1011,15 +946,14 @@ Exemples :
                 color: 'white',
                 fontWeight: '600',
                 cursor: 'pointer',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease'
+                fontSize: '1rem'
               }}
             >
               💾 Télécharger
             </button>
           </div>
 
-          {/* Informations de la piste */}
+          {/* Infos */}
           {audioData && (
             <div style={{
               display: 'grid',
@@ -1033,7 +967,7 @@ Exemples :
                 textAlign: 'center'
               }}>
                 <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Style</div>
-                <div style={{ color: 'white', fontWeight: '600', textTransform: 'capitalize' }}>{style}</div>
+                <div style={{ color: 'white', fontWeight: '600' }}>{style}</div>
               </div>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.1)',
@@ -1053,21 +987,12 @@ Exemples :
                 <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>BPM</div>
                 <div style={{ color: 'white', fontWeight: '600' }}>{audioData.bpm}</div>
               </div>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                padding: '12px',
-                borderRadius: '10px',
-                textAlign: 'center'
-              }}>
-                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Qualité</div>
-                <div style={{ color: 'white', fontWeight: '600' }}>Suno-like</div>
-              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Résultat textuel */}
+      {/* Résultat */}
       {result && (
         <div style={{
           background: 'rgba(0, 0, 0, 0.3)',
@@ -1082,368 +1007,6 @@ Exemples :
             fontSize: '1.1rem'
           }}>
             📋 Détails de la composition :
-          </h4>
-          <div style={{
-            color: '#e5e5e5',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.6',
-            fontSize: '1rem'
-          }}>
-            {result}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VoiceAIInterface({ onGenerate, isGenerating, result }) {
-  const [text, setText] = useState('');
-  const [voice, setVoice] = useState('female-fr');
-  const [speed, setSpeed] = useState(1.0);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Type de voix
-        </label>
-        <select 
-          value={voice} 
-          onChange={(e) => setVoice(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '15px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            fontSize: '1rem'
-          }}
-        >
-          <option value="female-fr">👩 Marie - Voix féminine française</option>
-          <option value="male-fr">👨 Pierre - Voix masculine française</option>
-          <option value="child">👧 Emma - Voix d'enfant</option>
-        </select>
-      </div>
-
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Texte à synthétiser
-        </label>
-        <textarea 
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Entrez le texte que vous voulez transformer en parole... 
-
-Exemples :
-• Bonjour ! Comment allez-vous aujourd'hui ?
-• L'intelligence artificielle révolutionne notre monde.
-• Il était une fois, dans un royaume lointain..."
-          style={{
-            width: '100%',
-            padding: '15px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            fontSize: '1rem',
-            minHeight: '120px',
-            resize: 'vertical',
-            lineHeight: '1.5'
-          }}
-        />
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          color: 'rgba(255, 255, 255, 0.6)',
-          fontSize: '0.9rem',
-          marginTop: '8px'
-        }}>
-          <span>{text.length} caractères</span>
-          <span>~{Math.ceil(text.length / 12)} secondes</span>
-        </div>
-      </div>
-
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Vitesse de parole : {speed}x
-        </label>
-        <input 
-          type="range"
-          min="0.5"
-          max="2.0"
-          step="0.1"
-          value={speed}
-          onChange={(e) => setSpeed(e.target.value)}
-          style={{
-            width: '100%',
-            height: '8px',
-            borderRadius: '5px',
-            background: 'rgba(255, 255, 255, 0.2)',
-            outline: 'none'
-          }}
-        />
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          color: 'rgba(255, 255, 255, 0.6)',
-          fontSize: '0.9rem',
-          marginTop: '5px'
-        }}>
-          <span>0.5x (lent)</span>
-          <span>1.0x (normal)</span>
-          <span>2.0x (rapide)</span>
-        </div>
-      </div>
-
-      <button 
-        onClick={() => onGenerate({ text, voice, speed })}
-        disabled={isGenerating || !text || text.length < 3}
-        style={{
-          width: '100%',
-          background: isGenerating || !text || text.length < 3
-            ? 'rgba(108, 117, 125, 0.5)' 
-            : 'linear-gradient(45deg, #3b82f6, #06b6d4)',
-          border: 'none',
-          padding: '18px',
-          borderRadius: '10px',
-          color: 'white',
-          fontWeight: '600',
-          fontSize: '1.1rem',
-          cursor: isGenerating || !text || text.length < 3 ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s ease'
-        }}
-      >
-        {isGenerating ? '🎙️ Synthèse en cours...' : '🔊 Synthétiser la voix'}
-      </button>
-
-      {result && (
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.3)',
-          borderRadius: '10px',
-          padding: '20px',
-          maxHeight: '400px',
-          overflowY: 'auto',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{
-            color: 'white',
-            fontWeight: '600',
-            marginBottom: '15px',
-            fontSize: '1.1rem'
-          }}>
-            🎙️ Synthèse vocale :
-          </h4>
-          <div style={{
-            color: '#e5e5e5',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.6',
-            fontSize: '1rem'
-          }}>
-            {result}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VideoAIInterface({ onGenerate, isGenerating, result }) {
-  const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState('realistic');
-  const [duration, setDuration] = useState(10);
-  const [resolution, setResolution] = useState('1920x1080');
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Style de vidéo
-        </label>
-        <select 
-          value={style} 
-          onChange={(e) => setStyle(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '15px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            fontSize: '1rem'
-          }}
-        >
-          <option value="realistic">🎬 Photoréaliste - Ultra HD</option>
-          <option value="cinematic">🎭 Cinématographique - Grade couleur</option>
-          <option value="animation">🎨 Animation 3D - Style cartoon</option>
-          <option value="artistic">🖼️ Artistique - Rendu pictural</option>
-        </select>
-      </div>
-
-      <div>
-        <label style={{ 
-          display: 'block', 
-          color: 'white', 
-          fontWeight: '600', 
-          marginBottom: '10px',
-          fontSize: '1.1rem'
-        }}>
-          Description de la vidéo
-        </label>
-        <textarea 
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Décrivez la vidéo que vous voulez créer...
-
-Exemples :
-• Un coucher de soleil majestueux sur une montagne
-• Une ville futuriste avec des voitures volantes
-• Des formes géométriques colorées en mouvement
-• Un voyage dans l'espace vers une planète lointaine"
-          style={{
-            width: '100%',
-            padding: '15px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            fontSize: '1rem',
-            minHeight: '120px',
-            resize: 'vertical',
-            lineHeight: '1.5'
-          }}
-        />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div>
-          <label style={{ 
-            display: 'block', 
-            color: 'white', 
-            fontWeight: '600', 
-            marginBottom: '10px',
-            fontSize: '1.1rem'
-          }}>
-            Durée : {duration} secondes
-          </label>
-          <input 
-            type="range"
-            min="5"
-            max="30"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            style={{
-              width: '100%',
-              height: '8px',
-              borderRadius: '5px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              outline: 'none'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            color: 'rgba(255, 255, 255, 0.6)',
-            fontSize: '0.9rem',
-            marginTop: '5px'
-          }}>
-            <span>5s</span>
-            <span>30s</span>
-          </div>
-        </div>
-
-        <div>
-          <label style={{ 
-            display: 'block', 
-            color: 'white', 
-            fontWeight: '600', 
-            marginBottom: '10px',
-            fontSize: '1.1rem'
-          }}>
-            Résolution
-          </label>
-          <select 
-            value={resolution} 
-            onChange={(e) => setResolution(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '15px',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '1rem'
-            }}
-          >
-            <option value="1280x720">HD - 720p</option>
-            <option value="1920x1080">Full HD - 1080p</option>
-            <option value="3840x2160">4K Ultra HD</option>
-          </select>
-        </div>
-      </div>
-
-      <button 
-        onClick={() => onGenerate({ prompt, style, duration, resolution })}
-        disabled={isGenerating || !prompt || prompt.length < 10}
-        style={{
-          width: '100%',
-          background: isGenerating || !prompt || prompt.length < 10
-            ? 'rgba(108, 117, 125, 0.5)' 
-            : 'linear-gradient(45deg, #10b981, #14b8a6)',
-          border: 'none',
-          padding: '18px',
-          borderRadius: '10px',
-          color: 'white',
-          fontWeight: '600',
-          fontSize: '1.1rem',
-          cursor: isGenerating || !prompt || prompt.length < 10 ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s ease'
-        }}
-      >
-        {isGenerating ? '🎬 Génération vidéo... (peut prendre 3-5 min)' : '🎥 Générer la vidéo'}
-      </button>
-
-      {result && (
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.3)',
-          borderRadius: '10px',
-          padding: '20px',
-          maxHeight: '500px',
-          overflowY: 'auto',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          <h4 style={{
-            color: 'white',
-            fontWeight: '600',
-            marginBottom: '15px',
-            fontSize: '1.1rem'
-          }}>
-            🎬 Votre création vidéo :
           </h4>
           <div style={{
             color: '#e5e5e5',
