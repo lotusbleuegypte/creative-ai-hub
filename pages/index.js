@@ -577,6 +577,16 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [audioData, setAudioData] = useState(null);
   const [waveformBars, setWaveformBars] = useState([]);
+  const [hfToken, setHfToken] = useState('');
+  const [showTokenInput, setShowTokenInput] = useState(false);
+
+  // Charger le token depuis localStorage au démarrage
+  useEffect(() => {
+    const savedToken = localStorage.getItem('hf_token');
+    if (savedToken) {
+      setHfToken(savedToken);
+    }
+  }, []);
 
   // Générer la waveform visuelle
   useEffect(() => {
@@ -587,11 +597,30 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
     setWaveformBars(bars);
   }, [result]);
 
-  // Gérer la génération
+  // Sauvegarder le token
+  const saveToken = () => {
+    if (!hfToken || !hfToken.startsWith('hf_')) {
+      alert('❌ Token invalide. Il doit commencer par "hf_"');
+      return;
+    }
+    localStorage.setItem('hf_token', hfToken);
+    setShowTokenInput(false);
+    alert('✅ Token sauvegardé ! Vous pouvez maintenant générer de la vraie musique.');
+  };
+
+  // Gérer la génération avec token
   const handleGenerate = async () => {
-    await onGenerate({ prompt, style, duration });
+    // Récupérer le token depuis localStorage
+    const token = localStorage.getItem('hf_token');
     
-    // Créer les données audio immédiatement
+    await onGenerate({ 
+      prompt, 
+      style, 
+      duration,
+      token: token || null // Passer le token ou null pour le fallback
+    });
+    
+    // Créer les données audio
     setAudioData({
       style,
       duration: parseInt(duration),
@@ -600,7 +629,7 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
     });
   };
 
-  // Jouer la musique
+  // Jouer la musique (code existant...)
   const playMusic = async () => {
     if (!audioData) return;
     
@@ -679,6 +708,94 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      
+      {/* Section Token Hugging Face */}
+      <div style={{
+        background: 'rgba(102, 126, 234, 0.1)',
+        border: '1px solid rgba(102, 126, 234, 0.3)',
+        borderRadius: '15px',
+        padding: '20px'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '15px'
+        }}>
+          <h4 style={{ color: 'white', margin: 0, fontSize: '1.1rem' }}>
+            🔑 Configuration Hugging Face
+          </h4>
+          <button
+            onClick={() => setShowTokenInput(!showTokenInput)}
+            style={{
+              background: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '8px',
+              color: 'white',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}
+          >
+            {localStorage.getItem('hf_token') ? '✅ Configuré' : '⚙️ Configurer'}
+          </button>
+        </div>
+
+        <p style={{ 
+          color: 'rgba(255, 255, 255, 0.8)', 
+          fontSize: '0.9rem',
+          margin: '0 0 15px 0'
+        }}>
+          {localStorage.getItem('hf_token') 
+            ? '🎵 Prêt pour générer de la vraie musique avec Hugging Face !' 
+            : '💡 Configurez votre token pour obtenir de la vraie musique IA au lieu de simulations.'
+          }
+        </p>
+
+        {showTokenInput && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'end' }}>
+            <div style={{ flex: 1 }}>
+              <input
+                type="text"
+                value={hfToken}
+                onChange={(e) => setHfToken(e.target.value)}
+                placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  fontSize: '0.9rem'
+                }}
+              />
+              <small style={{ 
+                color: 'rgba(255, 255, 255, 0.6)', 
+                display: 'block', 
+                marginTop: '5px' 
+              }}>
+                Obtenez votre token sur <a href="https://huggingface.co/settings/tokens" target="_blank" style={{ color: '#4ecdc4' }}>huggingface.co/settings/tokens</a>
+              </small>
+            </div>
+            <button
+              onClick={saveToken}
+              style={{
+                background: 'linear-gradient(45deg, #10b981, #34d399)',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                padding: '12px 20px',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Sauvegarder
+            </button>
+          </div>
+        )}
+      </div>
+
       <div>
         <label style={{ 
           display: 'block', 
@@ -702,12 +819,12 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="electronic">🎛️ Électronique - EDM/Dubstep</option>
-          <option value="pop">🎤 Pop - Radio Friendly</option>
-          <option value="rock">🎸 Rock - Guitares puissantes</option>
-          <option value="jazz">🎺 Jazz - Sophistiqué</option>
-          <option value="classical">🎼 Classique - Orchestral</option>
-          <option value="ambient">🌙 Ambient - Atmosphérique</option>
+          <option value="electronic" style={{background: '#1f2937'}}>🎛️ Électronique - EDM/Dubstep</option>
+          <option value="pop" style={{background: '#1f2937'}}>🎤 Pop - Radio Friendly</option>
+          <option value="rock" style={{background: '#1f2937'}}>🎸 Rock - Guitares puissantes</option>
+          <option value="jazz" style={{background: '#1f2937'}}>🎺 Jazz - Sophistiqué</option>
+          <option value="classical" style={{background: '#1f2937'}}>🎼 Classique - Orchestral</option>
+          <option value="ambient" style={{background: '#1f2937'}}>🌙 Ambient - Atmosphérique</option>
         </select>
       </div>
 
@@ -800,7 +917,8 @@ Exemples :
           transition: 'all 0.3s ease'
         }}
       >
-        {isGenerating ? '🎵 Composition en cours...' : '🎼 Générer la musique'}
+        {isGenerating ? '🎵 Composition en cours...' : 
+         localStorage.getItem('hf_token') ? '🎼 Générer avec Hugging Face' : '🎼 Générer (simulation)'}
       </button>
 
       {/* Player musical */}
