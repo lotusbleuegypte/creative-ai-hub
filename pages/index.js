@@ -573,9 +573,147 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('electronic');
   const [duration, setDuration] = useState(30);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioContext, setAudioContext] = useState(null);
+  const [audioData, setAudioData] = useState(null);
+  const [waveformBars, setWaveformBars] = useState([]);
+
+  // Générer la waveform visuelle
+  useEffect(() => {
+    const bars = [];
+    for (let i = 0; i < 100; i++) {
+      bars.push(Math.random() * 60 + 20);
+    }
+    setWaveformBars(bars);
+  }, [result]);
+
+  // Initialiser Web Audio API
+  const initAudio = async () => {
+    if (!audioContext) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      setAudioContext(ctx);
+      return ctx;
+    }
+    return audioContext;
+  };
+
+  // Générer la musique avec Web Audio API
+  const generateWebAudio = async (musicData) => {
+    const ctx = await initAudio();
+    
+    // Créer les oscillateurs basés sur le style
+    const createInstruments = (style, duration) => {
+      const instruments = [];
+      
+      if (style === 'electronic') {
+        // Lead Synth
+        const lead = ctx.createOscillator();
+        lead.type = 'sawtooth';
+        lead.frequency.setValueAtTime(440, ctx.currentTime);
+        
+        // Bass
+        const bass = ctx.createOscillator();
+        bass.type = 'square';
+        bass.frequency.setValueAtTime(110, ctx.currentTime);
+        
+        instruments.push({ osc: lead, type: 'lead' }, { osc: bass, type: 'bass' });
+      }
+      
+      // Configuration des gains
+      instruments.forEach(inst => {
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        inst.osc.connect(gain);
+        gain.connect(ctx.destination);
+        inst.gain = gain;
+      });
+      
+      return instruments;
+    };
+
+    return createInstruments(musicData.style, musicData.duration);
+  };
+
+  // Jouer la musique
+  const playMusic = async () => {
+    if (!audioData) return;
+    
+    try {
+      const ctx = await initAudio();
+      const instruments = await generateWebAudio(audioData);
+      
+      setIsPlaying(true);
+      
+      // Programmer la séquence musicale
+      const playSequence = () => {
+        instruments.forEach((inst, index) => {
+          const startTime = ctx.currentTime + (index * 0.1);
+          const duration = audioData.duration;
+          
+          // Créer une mélodie basée sur le style
+          if (inst.type === 'lead') {
+            const frequencies = [440, 493.88, 523.25, 587.33, 659.25]; // A, B, C, D, E
+            frequencies.forEach((freq, i) => {
+              inst.osc.frequency.setValueAtTime(freq, startTime + (i * duration / 5));
+            });
+          }
+          
+          inst.osc.start(startTime);
+          inst.osc.stop(startTime + duration);
+        });
+      };
+      
+      playSequence();
+      
+      // Animation de progression
+      const progressInterval = setInterval(() => {
+        setCurrentTime(prev => {
+          const newTime = prev + 0.1;
+          if (newTime >= audioData.duration) {
+            clearInterval(progressInterval);
+            setIsPlaying(false);
+            setCurrentTime(0);
+            return 0;
+          }
+          return newTime;
+        });
+      }, 100);
+      
+    } catch (error) {
+      console.error('Erreur lecture:', error);
+      setIsPlaying(false);
+    }
+  };
+
+  // Arrêter la musique
+  const stopMusic = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    if (audioContext) {
+      audioContext.close();
+      setAudioContext(null);
+    }
+  };
+
+  // Gérer la génération
+  const handleGenerate = async () => {
+    const generationResult = await onGenerate({ prompt, style, duration });
+    
+    // Extraire les données audio du résultat
+    if (result && result.includes('AUDIO PRÊT')) {
+      setAudioData({
+        style,
+        duration,
+        prompt,
+        bpm: style === 'electronic' ? 128 : style === 'rock' ? 140 : 120
+      });
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+      {/* Contrôles de génération */}
       <div>
         <label style={{ 
           display: 'block', 
@@ -584,7 +722,7 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
           marginBottom: '10px',
           fontSize: '1.1rem'
         }}>
-          Style musical
+          🎵 Style musical
         </label>
         <select 
           value={style} 
@@ -599,14 +737,12 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="electronic" style={{background: '#1f2937', color: 'white'}}>Électronique</option>
-          <option value="pop" style={{background: '#1f2937', color: 'white'}}>Pop</option>
-          <option value="rock" style={{background: '#1f2937', color: 'white'}}>Rock</option>
-          <option value="jazz" style={{background: '#1f2937', color: 'white'}}>Jazz</option>
-          <option value="classical" style={{background: '#1f2937', color: 'white'}}>Classique</option>
-          <option value="hip-hop" style={{background: '#1f2937', color: 'white'}}>Hip-Hop</option>
-          <option value="ambient" style={{background: '#1f2937', color: 'white'}}>Ambient</option>
-          <option value="folk" style={{background: '#1f2937', color: 'white'}}>Folk</option>
+          <option value="electronic">🎛️ Électronique - EDM/Dubstep</option>
+          <option value="pop">🎤 Pop - Radio Friendly</option>
+          <option value="rock">🎸 Rock - Guitares puissantes</option>
+          <option value="jazz">🎺 Jazz - Sophistiqué</option>
+          <option value="classical">🎼 Classique - Orchestral</option>
+          <option value="ambient">🌙 Ambient - Atmosphérique</option>
         </select>
       </div>
 
@@ -618,13 +754,19 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
           marginBottom: '10px',
           fontSize: '1.1rem'
         }}>
-          Description/Ambiance
+          ✨ Description musicale
         </label>
-        <input 
-          type="text"
+        <textarea 
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ex: mélancolique, énergique, romantique, mystérieux..."
+          placeholder="Décrivez l'ambiance et le style de votre musique...
+
+Exemples :
+• Musique électronique énergique pour danser
+• Ballade pop romantique et mélancolique  
+• Rock puissant avec des solos de guitare
+• Jazz doux pour un café parisien
+• Musique classique majestueuse et dramatique"
           style={{
             width: '100%',
             padding: '15px',
@@ -632,9 +774,22 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
             background: 'rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             color: 'white',
-            fontSize: '1rem'
+            fontSize: '1rem',
+            minHeight: '100px',
+            resize: 'vertical',
+            lineHeight: '1.5'
           }}
         />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: '0.9rem',
+          marginTop: '8px'
+        }}>
+          <span>{prompt.length} caractères</span>
+          <span>Plus c'est détaillé, mieux c'est !</span>
+        </div>
       </div>
 
       <div>
@@ -645,12 +800,12 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
           marginBottom: '10px',
           fontSize: '1.1rem'
         }}>
-          Durée : {duration} secondes
+          ⏱️ Durée : {duration} secondes
         </label>
         <input 
           type="range"
           min="15"
-          max="60"
+          max="120"
           value={duration}
           onChange={(e) => setDuration(e.target.value)}
           style={{
@@ -668,39 +823,245 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
           fontSize: '0.9rem',
           marginTop: '5px'
         }}>
-          <span>15s</span>
-          <span>60s</span>
+          <span>15s (démo)</span>
+          <span>60s (standard)</span>
+          <span>120s (max)</span>
         </div>
       </div>
 
       <button 
-        onClick={() => onGenerate({ prompt, style, duration })}
-        disabled={isGenerating || !prompt}
+        onClick={handleGenerate}
+        disabled={isGenerating || !prompt || prompt.length < 10}
         style={{
           width: '100%',
-          background: isGenerating || !prompt 
+          background: isGenerating || !prompt || prompt.length < 10
             ? 'rgba(108, 117, 125, 0.5)' 
             : 'linear-gradient(45deg, #8b5cf6, #ec4899)',
           border: 'none',
           padding: '18px',
-          borderRadius: '10px',
+          borderRadius: '15px',
           color: 'white',
           fontWeight: '600',
-          fontSize: '1.1rem',
-          cursor: isGenerating || !prompt ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s ease'
+          fontSize: '1.2rem',
+          cursor: isGenerating || !prompt || prompt.length < 10 ? 'not-allowed' : 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: !isGenerating && prompt && prompt.length >= 10 ? '0 8px 25px rgba(139, 92, 246, 0.3)' : 'none'
         }}
       >
-        {isGenerating ? '🎵 Composition en cours... (peut prendre 2-5 min)' : '🎼 Générer la musique'}
+        {isGenerating ? '🎵 Composition en cours... (3-5 sec)' : '🎼 Générer la musique'}
       </button>
 
+      {/* Player musical (style Suno) */}
+      {(audioData || result) && (
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.4)',
+          borderRadius: '20px',
+          padding: '30px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          marginTop: '20px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '15px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ fontSize: '2.5rem' }}>🎵</div>
+            <div>
+              <h3 style={{
+                color: 'white',
+                fontSize: '1.3rem',
+                fontWeight: '600',
+                marginBottom: '5px'
+              }}>
+                Composition {style.charAt(0).toUpperCase() + style.slice(1)}
+              </h3>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '1rem',
+                margin: 0
+              }}>
+                {prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt}
+              </p>
+            </div>
+          </div>
+
+          {/* Waveform visuelle */}
+          <div style={{
+            height: '80px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'end',
+            padding: '10px',
+            gap: '2px',
+            marginBottom: '20px',
+            overflow: 'hidden'
+          }}>
+            {waveformBars.map((height, index) => (
+              <div
+                key={index}
+                style={{
+                  width: '3px',
+                  height: `${isPlaying ? height : height * 0.3}%`,
+                  background: isPlaying 
+                    ? `linear-gradient(to top, #8b5cf6, #ec4899)` 
+                    : 'rgba(255, 255, 255, 0.3)',
+                  borderRadius: '2px',
+                  transition: 'all 0.3s ease',
+                  opacity: isPlaying && audioData && (index / waveformBars.length) <= (currentTime / audioData.duration) ? 1 : 0.5
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Barre de progression */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            height: '6px',
+            borderRadius: '3px',
+            marginBottom: '20px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: 'linear-gradient(45deg, #8b5cf6, #ec4899)',
+              height: '100%',
+              width: audioData ? `${(currentTime / audioData.duration) * 100}%` : '0%',
+              borderRadius: '3px',
+              transition: 'width 0.1s ease'
+            }} />
+          </div>
+
+          {/* Contrôles de lecture */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '15px',
+            marginBottom: '25px'
+          }}>
+            <button 
+              onClick={playMusic}
+              disabled={isPlaying || !result || !result.includes('AUDIO PRÊT')}
+              style={{
+                background: isPlaying || !result || !result.includes('AUDIO PRÊT')
+                  ? 'rgba(108, 117, 125, 0.5)' 
+                  : 'linear-gradient(45deg, #10b981, #34d399)',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '25px',
+                color: 'white',
+                fontWeight: '600',
+                cursor: isPlaying || !result || !result.includes('AUDIO PRÊT') ? 'not-allowed' : 'pointer',
+                fontSize: '1rem',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isPlaying ? '🎵 En lecture...' : '▶️ Jouer'}
+            </button>
+
+            <button 
+              onClick={stopMusic}
+              style={{
+                background: 'linear-gradient(45deg, #ef4444, #dc2626)',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '25px',
+                color: 'white',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              ⏹️ Stop
+            </button>
+
+            <button 
+              onClick={() => {
+                const musicInfo = {
+                  title: `Composition ${style}`,
+                  style, duration, prompt,
+                  generatedAt: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(musicInfo, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `music_${style}_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{
+                background: 'linear-gradient(45deg, #3b82f6, #1d4ed8)',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '25px',
+                color: 'white',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              💾 Télécharger
+            </button>
+          </div>
+
+          {/* Informations de la piste */}
+          {audioData && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gap: '15px'
+            }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px',
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Style</div>
+                <div style={{ color: 'white', fontWeight: '600', textTransform: 'capitalize' }}>{style}</div>
+              </div>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px',
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Durée</div>
+                <div style={{ color: 'white', fontWeight: '600' }}>{duration}s</div>
+              </div>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px',
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>BPM</div>
+                <div style={{ color: 'white', fontWeight: '600' }}>{audioData.bpm}</div>
+              </div>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '12px',
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>Qualité</div>
+                <div style={{ color: 'white', fontWeight: '600' }}>Suno-like</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Résultat textuel */}
       {result && (
         <div style={{
           background: 'rgba(0, 0, 0, 0.3)',
-          borderRadius: '10px',
+          borderRadius: '15px',
           padding: '20px',
-          maxHeight: '400px',
-          overflowY: 'auto',
           border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
           <h4 style={{
@@ -709,7 +1070,7 @@ function MusicAIInterface({ onGenerate, isGenerating, result }) {
             marginBottom: '15px',
             fontSize: '1.1rem'
           }}>
-            🎵 Votre composition :
+            📋 Détails de la composition :
           </h4>
           <div style={{
             color: '#e5e5e5',
@@ -755,9 +1116,9 @@ function VoiceAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="female-fr" style={{background: '#1f2937', color: 'white'}}>👩 Marie - Voix féminine française</option>
-          <option value="male-fr" style={{background: '#1f2937', color: 'white'}}>👨 Pierre - Voix masculine française</option>
-          <option value="child" style={{background: '#1f2937', color: 'white'}}>👧 Emma - Voix d'enfant</option>
+          <option value="female-fr">👩 Marie - Voix féminine française</option>
+          <option value="male-fr">👨 Pierre - Voix masculine française</option>
+          <option value="child">👧 Emma - Voix d'enfant</option>
         </select>
       </div>
 
@@ -926,10 +1287,10 @@ function VideoAIInterface({ onGenerate, isGenerating, result }) {
             fontSize: '1rem'
           }}
         >
-          <option value="realistic" style={{background: '#1f2937', color: 'white'}}>🎬 Photoréaliste - Ultra HD</option>
-          <option value="cinematic" style={{background: '#1f2937', color: 'white'}}>🎭 Cinématographique - Grade couleur</option>
-          <option value="animation" style={{background: '#1f2937', color: 'white'}}>🎨 Animation 3D - Style cartoon</option>
-          <option value="artistic" style={{background: '#1f2937', color: 'white'}}>🖼️ Artistique - Rendu pictural</option>
+          <option value="realistic">🎬 Photoréaliste - Ultra HD</option>
+          <option value="cinematic">🎭 Cinématographique - Grade couleur</option>
+          <option value="animation">🎨 Animation 3D - Style cartoon</option>
+          <option value="artistic">🖼️ Artistique - Rendu pictural</option>
         </select>
       </div>
 
@@ -1028,9 +1389,9 @@ Exemples :
               fontSize: '1rem'
             }}
           >
-            <option value="1280x720" style={{background: '#1f2937', color: 'white'}}>HD - 720p</option>
-            <option value="1920x1080" style={{background: '#1f2937', color: 'white'}}>Full HD - 1080p</option>
-            <option value="3840x2160" style={{background: '#1f2937', color: 'white'}}>4K Ultra HD</option>
+            <option value="1280x720">HD - 720p</option>
+            <option value="1920x1080">Full HD - 1080p</option>
+            <option value="3840x2160">4K Ultra HD</option>
           </select>
         </div>
       </div>
