@@ -1,113 +1,61 @@
-// pages/api/generate-music.js - VERSION HUGGING FACE + MÉTADONNÉES
+// pages/api/generate-music.js - BYPASS HUGGING FACE OFFICIEL
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
   try {
-    const { prompt, style, duration, token } = req.body;
+    const { prompt, style = 'electronic', duration = 30 } = req.body;
 
-    if (!prompt || !style) {
-      return res.status(400).json({ error: 'Prompt et style requis' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt requis' });
     }
 
-    if (!token) {
-      return res.status(400).json({ error: 'Token Hugging Face requis' });
-    }
-
-    // Génération des métadonnées comme avant
+    // Génération des métadonnées fictives
     const musicData = generateAdvancedMusicData(prompt, style, duration);
+    const optimizedPrompt = `${style} music, ${prompt}, ${musicData.mood}`;
 
-    // Création du prompt optimisé pour Hugging Face
-    const optimizedPrompt = createOptimizedPrompt(prompt, style, musicData);
+    // Appel au serveur proxy MusicGen
+    console.log('🔗 Génération réelle via proxy MusicGen...');
 
-    // 🎵 VRAIE GÉNÉRATION MUSICALE avec Hugging Face
-    let audioBase64 = null;
-    try {
-      console.log('🎵 Génération audio avec Hugging Face...');
-      
-     const response = await fetch('https://api-inference.huggingface.co/models/facebook/musicgen-medium', {
+    const proxyResponse = await fetch("https://freesoundapi.space/musicgen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: optimizedPrompt })
+    });
 
-
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: optimizedPrompt,
-          parameters: {
-            max_new_tokens: Math.min(1024, duration * 8),
-            temperature: 0.7,
-            do_sample: true,
-          }
-        })
-      });
-
-      if (response.ok) {
-        const audioBuffer = await response.arrayBuffer();
-        audioBase64 = Buffer.from(audioBuffer).toString('base64');
-        console.log('✅ Audio généré avec succès !');
-      } else {
-        console.log('⚠️ Fallback vers simulation (modèle en chargement)');
-      }
-
-    } catch (error) {
-      console.log('⚠️ Erreur Hugging Face, fallback vers simulation:', error.message);
+    if (!proxyResponse.ok) {
+      throw new Error("API proxy MusicGen HS");
     }
 
-    // Texte de résultat enrichi
-    const result = `🎵 Composition générée avec ${audioBase64 ? 'HUGGING FACE' : 'SIMULATION'} !\n\n📋 Votre composition "${style}" :\n• Ambiance : ${prompt}\n• Durée : ${duration} secondes\n• Qualité : ${audioBase64 ? 'Professionnelle (Vraie IA)' : 'Simulation Premium'}\n\n🎼 Structure musicale :\n${musicData.structure}\n\n🎹 Instruments générés :\n${musicData.instruments.map(i => `• ${i}`).join('\n')}\n\n🎵 Caractéristiques :\n• Tempo : ${musicData.bpm} BPM\n• Tonalité : ${musicData.key}\n• Style : ${musicData.description}\n• Complexité : ${musicData.complexity}/5\n• Ambiance : ${musicData.mood}\n\n${audioBase64 ? '🎧 AUDIO RÉEL GÉNÉRÉ par IA !' : '🎧 Simulation audio prête !'}`;
+    const arrayBuffer = await proxyResponse.arrayBuffer();
+    const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
+
+    // Format WAV encodé
+    const result = `🎵 Composition générée avec MUSICGEN PROXY !\n\n📋 Votre composition "${style}" :\n• Ambiance : ${prompt}\n• Durée : ${duration} secondes\n• Qualité : Réelle IA (WAV)\n\n🎼 Structure musicale :\n${musicData.structure}\n\n🎹 Instruments générés :\n${musicData.instruments.map(i => `• ${i}`).join('\n')}\n\n🎵 Caractéristiques :\n• Tempo : ${musicData.bpm} BPM\n• Tonalité : ${musicData.key}\n• Style : ${musicData.description}\n• Complexité : ${musicData.complexity}/5\n• Ambiance : ${musicData.mood}\n\n🎧 Audio réel encodé Base64 (WAV) prêt à jouer.`;
 
     res.status(200).json({
       success: true,
-      result: result,
-      audioData: musicData,
-      audioBase64: audioBase64,
+      result,
+      audioBase64,
+      realAudio: true,
       webAudioReady: true,
-      realAudio: !!audioBase64,
-      optimizedPrompt: optimizedPrompt
+      optimizedPrompt,
+      audioData: musicData
     });
 
   } catch (error) {
-    console.error('Erreur génération musicale:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de la génération musicale',
+    console.error('❌ Erreur MusicGen Proxy :', error);
+    res.status(500).json({
+      error: 'Erreur serveur lors de la génération musicale',
       details: error.message
     });
   }
 }
 
-function createOptimizedPrompt(prompt, style, musicData) {
-  const stylePrompts = {
-    electronic: `electronic dance music, synthesizers, ${musicData.bpm} bpm`,
-    pop: `pop music, catchy melody, vocals, modern production`,
-    rock: `rock music, electric guitar, drums, energetic`,
-    jazz: `jazz music, saxophone, piano, improvisation, swing`,
-    classical: `classical music, orchestra, strings, piano`,
-    ambient: `ambient music, atmospheric, drone, peaceful`
-  };
-
-  const baseStyle = stylePrompts[style] || stylePrompts.electronic;
-  let optimized = `${baseStyle}, ${prompt}`;
-
-  const moodKeywords = {
-    'joyeux': 'upbeat, happy, energetic',
-    'mélancolique': 'melancholic, sad, emotional',
-    'mystérieux': 'mysterious, dark, atmospheric',
-    'romantique': 'romantic, soft, gentle',
-    'énergique': 'energetic, powerful, intense',
-    'relaxant': 'relaxing, calm, peaceful'
-  };
-
-  if (musicData.mood && moodKeywords[musicData.mood]) {
-    optimized += `, ${moodKeywords[musicData.mood]}`;
-  }
-
-  return optimized;
-}
-
+// ———————————————————————————————————
+// MÉTADONNÉES MUSICALES SIMULÉES
 function generateAdvancedMusicData(prompt, style, duration) {
   const styles = {
     electronic: {
@@ -124,49 +72,21 @@ function generateAdvancedMusicData(prompt, style, duration) {
       key: "C",
       structure: "Intro (4s) → Verse (16s) → Chorus (16s) → Verse (12s) → Outro (8s)"
     },
-    rock: {
-      description: "Guitares puissantes, rythmes énergiques, solos expressifs",
-      instruments: ["Guitare Lead", "Guitare Rythmique", "Basse Électrique", "Batterie Rock", "Voix"],
-      bpm: 140,
-      key: "E",
-      structure: "Intro (6s) → Verse (18s) → Chorus (16s) → Solo (12s) → Final Chorus (18s)"
-    },
     jazz: {
-      description: "Harmonies sophistiquées, improvisation, swing rythmique",
-      instruments: ["Piano Jazz", "Contrebasse", "Batterie Jazz", "Saxophone", "Trompette"],
+      description: "Improvisation libre, textures complexes, rythme swing",
+      instruments: ["Piano", "Contrebasse", "Saxophone", "Batterie Jazz", "Trompette"],
       bpm: 90,
       key: "Bb",
-      structure: "Theme (20s) → Piano Solo (20s) → Sax Solo (16s) → Trading 4s (14s)"
-    },
-    classical: {
-      description: "Orchestration riche, développements thématiques, dynamiques variées",
-      instruments: ["Violons I", "Violons II", "Alto", "Violoncelle", "Contrebasse", "Piano"],
-      bpm: 80,
-      key: "Dm",
-      structure: "Exposition (24s) → Développement (28s) → Récapitulation (18s)"
-    },
-    ambient: {
-      description: "Textures atmosphériques, évolution lente, spatialisation sonore",
-      instruments: ["Pad Ambient", "Reverb Synth", "Field Recording", "Drone Bass", "Cristaux"],
-      bpm: 60,
-      key: "F#",
-      structure: "Émergence (20s) → Évolution (40s) → Apogée (15s) → Dissolution (15s)"
+      structure: "Intro (10s) → Thème (20s) → Solo (30s) → Outro (10s)"
     }
   };
 
   const config = styles[style] || styles.electronic;
-  if (prompt.includes('fast') || prompt.includes('énergique')) {
-    config.bpm += 20;
-  }
-  if (prompt.includes('slow') || prompt.includes('calme')) {
-    config.bpm -= 15;
-  }
-
   return {
     ...config,
-    prompt,
     style,
-    duration: parseInt(duration),
+    prompt,
+    duration,
     complexity: calculateComplexity(style, prompt),
     mood: analyzeMood(prompt),
     generatedAt: new Date().toISOString()
@@ -175,39 +95,25 @@ function generateAdvancedMusicData(prompt, style, duration) {
 
 function calculateComplexity(style, prompt) {
   let complexity = 1;
-  const styleComplexity = {
-    'classical': 3,
-    'jazz': 3,
-    'rock': 2,
-    'electronic': 2,
-    'pop': 1,
-    'ambient': 1
-  };
-  complexity *= (styleComplexity[style] || 1);
-
-  const complexWords = ['complex', 'sophistiqué', 'avancé', 'technique', 'virtuose'];
-  if (complexWords.some(word => prompt.toLowerCase().includes(word))) {
-    complexity += 0.5;
+  if (prompt.toLowerCase().includes("complex") || prompt.toLowerCase().includes("virtuose")) {
+    complexity += 1;
   }
-
-  return Math.min(5, Math.max(1, complexity));
+  return Math.min(5, complexity);
 }
 
 function analyzeMood(prompt) {
-  const moodKeywords = {
-    'joyeux': ['joyeux', 'heureux', 'énergique', 'festif', 'optimiste', 'upbeat'],
-    'mélancolique': ['triste', 'mélancolique', 'nostalgique', 'sombre', 'sad'],
-    'mystérieux': ['mystérieux', 'énigmatique', 'intriguant', 'dark', 'mysterious'],
-    'romantique': ['romantique', 'doux', 'tendre', 'amoureux', 'romantic'],
-    'énergique': ['énergique', 'puissant', 'dynamique', 'intense', 'powerful'],
-    'relaxant': ['calme', 'relaxant', 'paisible', 'zen', 'tranquille', 'chill']
+  const moods = {
+    joyeux: ['joyeux', 'heureux', 'festif'],
+    triste: ['triste', 'mélancolique', 'sombre'],
+    mystérieux: ['mystérieux', 'dark', 'inquiétant'],
+    romantique: ['romantique', 'tendre', 'amoureux'],
+    énergique: ['énergique', 'dynamique', 'rapide'],
+    relaxant: ['calme', 'zen', 'chill']
   };
-
-  for (const [mood, keywords] of Object.entries(moodKeywords)) {
-    if (keywords.some(keyword => prompt.toLowerCase().includes(keyword))) {
-      return mood;
+  for (const [label, keywords] of Object.entries(moods)) {
+    if (keywords.some(k => prompt.toLowerCase().includes(k))) {
+      return label;
     }
   }
-
   return 'neutre';
 }
