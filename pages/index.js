@@ -22,7 +22,6 @@ export default function Home() {
     }
     setParticles(particleArray);
 
-    // Animation des particules
     const animateParticles = () => {
       setParticles(prev => prev.map(particle => ({
         ...particle,
@@ -72,7 +71,6 @@ export default function Home() {
     }
   ];
 
-  // 🎵 FONCTION CORRIGÉE pour la musique
   const generateContent = async (type, params) => {
     setIsGenerating(true);
     setResult('');
@@ -90,7 +88,6 @@ export default function Home() {
       } else {
         setResult(data.result);
         
-        // 🎵 NOUVEAU: Stocker les données audio
         if (type === 'music' && data.audioBase64) {
           window.lastMusicGeneration = data;
         }
@@ -114,7 +111,6 @@ export default function Home() {
         <meta name="description" content="Plateforme tout-en-un pour la création avec l'IA" />
       </Head>
 
-      {/* Particules d'arrière-plan */}
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}>
         {particles.map(particle => (
           <div
@@ -133,7 +129,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Header */}
       <header style={{ textAlign: 'center', padding: '80px 20px', position: 'relative', zIndex: 1 }}>
         <h1 style={{
           fontSize: 'clamp(3rem, 8vw, 6rem)',
@@ -159,7 +154,6 @@ export default function Home() {
         </p>
       </header>
 
-      {/* Modules Grid */}
       <div style={{ 
         maxWidth: '1400px', 
         margin: '0 auto', 
@@ -262,7 +256,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Hub Multimodal */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.15)',
           backdropFilter: 'blur(25px)',
@@ -344,7 +337,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Modal */}
       {activeModal && (
         <div style={{
           position: 'fixed',
@@ -710,7 +702,6 @@ Exemples :
         {isGenerating ? '🎵 Composition en cours...' : '🎼 Générer la musique'}
       </button>
 
-      {/* Résultat avec lecteur audio */}
       {result && (
         <div style={{
           background: 'rgba(0, 0, 0, 0.3)',
@@ -735,8 +726,7 @@ Exemples :
             {result}
           </div>
 
-          {/* 🎵 LECTEUR AUDIO POUR SIMULATION AVANCÉE */}
-          {window.lastMusicGeneration && window.lastMusicGeneration.audioBase64 && (
+          {typeof window !== 'undefined' && window.lastMusicGeneration && window.lastMusicGeneration.audioBase64 && (
             <div style={{ marginTop: '20px' }}>
               <div style={{
                 background: 'linear-gradient(45deg, #8b5cf6, #ec4899)',
@@ -764,9 +754,26 @@ Exemples :
   );
 }
 
-// Fonctions vides pour les autres interfaces (vous pouvez les développer plus tard)
 function VoiceAIInterface({ onGenerate, isGenerating, result }) {
   return (
     <div style={{ textAlign: 'center', color: 'white' }}>
       <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🔁</div>
       <h3>Synthèse Vocale IA</h3>
+      <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+        Cette fonctionnalité sera disponible prochainement !
+      </p>
+    </div>
+  );
+}
+
+function VideoAIInterface({ onGenerate, isGenerating, result }) {
+  return (
+    <div style={{ textAlign: 'center', color: 'white' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎥</div>
+      <h3>Création Vidéo IA</h3>
+      <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+        Cette fonctionnalité sera disponible prochainement !
+      </p>
+    </div>
+  );
+}
