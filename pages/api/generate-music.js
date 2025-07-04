@@ -1,4 +1,4 @@
-// pages/api/generate-music.js - VERSION QUI FONCTIONNE VRAIMENT
+// pages/api/generate-music.js - VERSION SUNO API RÉELLE !!!
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,83 +12,59 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Prompt et style requis' });
     }
 
-    // Génération des métadonnées avancées
+    // Génération des métadonnées
     const musicData = generateAdvancedMusicData(prompt, style, duration);
 
-    // 🎵 PLUSIEURS TENTATIVES D'APIs PUBLIQUES
+    // 🎵 VRAIE GÉNÉRATION AVEC SUNO API !
     let audioUrl = null;
     let realAudio = false;
     let method = 'Simulation';
     
-    // Tentative 1: Suno API publique (via proxy)
     try {
-      console.log('🎵 Tentative Suno API publique...');
-      const sunoResult = await tryPublicSunoAPI(prompt, style, duration);
-      if (sunoResult.success) {
-        audioUrl = sunoResult.url;
+      console.log('🎵 Génération avec VRAIE API SUNO...');
+      
+      // Option 1: MusicHero (GRATUIT sans compte)
+      const musicHeroResult = await generateWithMusicHero(prompt, style, duration);
+      if (musicHeroResult.success) {
+        audioUrl = musicHeroResult.audioUrl;
         realAudio = true;
-        method = 'Suno AI Public';
-        console.log('✅ Suno API fonctionne !');
+        method = 'Suno AI via MusicHero';
+        console.log('✅ MusicHero Suno API fonctionne !');
       }
+      
+      // Option 2: PiAPI (Payant mais fiable)
+      if (!realAudio) {
+        const piApiResult = await generateWithPiAPI(prompt, style, duration);
+        if (piApiResult.success) {
+          audioUrl = piApiResult.audioUrl;
+          realAudio = true;
+          method = 'Suno AI via PiAPI';
+          console.log('✅ PiAPI Suno fonctionne !');
+        }
+      }
+      
+      // Option 3: SunoAPI.org (Alternative)
+      if (!realAudio) {
+        const sunoOrgResult = await generateWithSunoOrg(prompt, style, duration);
+        if (sunoOrgResult.success) {
+          audioUrl = sunoOrgResult.audioUrl;
+          realAudio = true;
+          method = 'Suno AI via SunoAPI.org';
+          console.log('✅ SunoAPI.org fonctionne !');
+        }
+      }
+
     } catch (error) {
-      console.log('⚠️ Suno API non disponible');
-    }
-
-    // Tentative 2: Replicate public (si Suno échoue)
-    if (!realAudio) {
-      try {
-        console.log('🎵 Tentative Replicate public...');
-        const replicateResult = await tryPublicReplicate(prompt, style, duration);
-        if (replicateResult.success) {
-          audioUrl = replicateResult.url;
-          realAudio = true;
-          method = 'Replicate MusicGen';
-          console.log('✅ Replicate fonctionne !');
-        }
-      } catch (error) {
-        console.log('⚠️ Replicate non disponible');
-      }
-    }
-
-    // Tentative 3: API musicapi.ai (nouveau service)
-    if (!realAudio) {
-      try {
-        console.log('🎵 Tentative MusicAPI.ai...');
-        const musicApiResult = await tryMusicAPIService(prompt, style, duration);
-        if (musicApiResult.success) {
-          audioUrl = musicApiResult.url;
-          realAudio = true;
-          method = 'MusicAPI.ai';
-          console.log('✅ MusicAPI.ai fonctionne !');
-        }
-      } catch (error) {
-        console.log('⚠️ MusicAPI.ai non disponible');
-      }
-    }
-
-    // Tentative 4: Beatoven.ai (API gratuite limitée)
-    if (!realAudio) {
-      try {
-        console.log('🎵 Tentative Beatoven.ai...');
-        const beatovenResult = await tryBeatovenAPI(prompt, style, duration);
-        if (beatovenResult.success) {
-          audioUrl = beatovenResult.url;
-          realAudio = true;
-          method = 'Beatoven.ai';
-          console.log('✅ Beatoven.ai fonctionne !');
-        }
-      } catch (error) {
-        console.log('⚠️ Beatoven.ai non disponible');
-      }
+      console.log('⚠️ Toutes les APIs Suno indisponibles:', error.message);
     }
 
     // Texte de résultat
-    const result = `🎵 Composition générée avec ${realAudio ? method.toUpperCase() + ' IA' : 'SIMULATION AVANCÉE'} !
+    const result = `🎵 Composition générée avec ${realAudio ? method.toUpperCase() : 'SIMULATION AVANCÉE'} !
 
 📋 Votre composition "${style}" :
 • Ambiance : ${prompt}
 • Durée : ${duration} secondes
-• Qualité : ${realAudio ? `Professionnelle (${method})` : 'Simulation Premium'}
+• Qualité : ${realAudio ? 'SUNO AI - Radio Quality' : 'Simulation Premium'}
 
 🎼 Structure musicale :
 ${musicData.structure}
@@ -103,9 +79,9 @@ ${musicData.instruments.map(i => `• ${i}`).join('\n')}
 • Complexité : ${musicData.complexity}/5
 • Ambiance : ${musicData.mood}
 
-${realAudio ? `🎧 VRAIE MUSIQUE IA générée !` : '🎧 Simulation audio avancée'}
+${realAudio ? '🎧 VRAIE MUSIQUE SUNO AI générée !' : '🎧 Simulation audio'}
 
-${realAudio ? `🔗 Source: ${method}` : '💡 Toutes les APIs sont temporairement indisponibles'}`;
+${realAudio ? `🔗 Généré par: ${method}` : '💡 APIs Suno temporairement indisponibles'}`;
 
     res.status(200).json({
       success: true,
@@ -115,8 +91,7 @@ ${realAudio ? `🔗 Source: ${method}` : '💡 Toutes les APIs sont temporaireme
       webAudioReady: true,
       realAudio: realAudio,
       method: method,
-      // Générer un sample audio base64 de meilleure qualité si pas de vraie API
-      audioBase64: !realAudio ? generateHighQualityAudioSample(musicData) : null
+      sunoQuality: realAudio
     });
 
   } catch (error) {
@@ -128,287 +103,177 @@ ${realAudio ? `🔗 Source: ${method}` : '💡 Toutes les APIs sont temporaireme
   }
 }
 
-// Tentative avec Suno API publique
-async function tryPublicSunoAPI(prompt, style, duration) {
+// 🎵 OPTION 1: MusicHero (GRATUIT - pas de compte requis)
+async function generateWithMusicHero(prompt, style, duration) {
   try {
-    // Utiliser un proxy public pour Suno
-    const response = await fetch('https://api.songgenerator.io/api/generate', {
+    // Construire le prompt optimisé pour Suno
+    const sunoPrompt = buildSunoPrompt(prompt, style);
+    
+    const response = await fetch('https://musichero.ai/api/suno/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; MusicBot/1.0)'
+        'User-Agent': 'Mozilla/5.0 (compatible; MusicApp/1.0)'
       },
       body: JSON.stringify({
-        prompt: `${style} music: ${prompt}`,
-        duration: Math.min(duration, 60), // Limité en version gratuite
-        format: 'mp3'
+        prompt: sunoPrompt,
+        make_instrumental: style !== 'pop', // Instrumental sauf pour pop
+        duration: Math.min(duration, 120), // Max 2 minutes
+        model_version: 'v3.5' // Dernière version Suno
       }),
-      timeout: 15000
+      timeout: 30000
     });
 
     if (response.ok) {
       const data = await response.json();
+      
+      // MusicHero retourne généralement l'URL directement
       if (data.audio_url || data.url || data.download_url) {
         return {
           success: true,
-          url: data.audio_url || data.url || data.download_url
+          audioUrl: data.audio_url || data.url || data.download_url
         };
+      }
+      
+      // Si c'est asynchrone, attendre le résultat
+      if (data.task_id || data.id) {
+        const finalUrl = await waitForMusicHeroResult(data.task_id || data.id);
+        if (finalUrl) {
+          return { success: true, audioUrl: finalUrl };
+        }
       }
     }
   } catch (error) {
-    console.log('Suno API error:', error.message);
+    console.log('MusicHero error:', error.message);
   }
   
   return { success: false };
 }
 
-// Tentative avec Replicate public
-async function tryPublicReplicate(prompt, style, duration) {
+// 🎵 OPTION 2: PiAPI (Payant mais très fiable)
+async function generateWithPiAPI(prompt, style, duration) {
   try {
-    // Certaines instances Replicate sont publiques
-    const response = await fetch('https://musicgen-api.onrender.com/generate', {
+    const sunoPrompt = buildSunoPrompt(prompt, style);
+    
+    // Vous devez vous inscrire sur piapi.ai pour avoir une clé
+    const PIAPI_KEY = process.env.PIAPI_KEY || 'demo-key';
+    
+    const response = await fetch('https://api.piapi.ai/api/suno/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PIAPI_KEY}`
+      },
+      body: JSON.stringify({
+        prompt: sunoPrompt,
+        make_instrumental: style !== 'pop',
+        duration: Math.min(duration, 120),
+        model: 'v3.5'
+      }),
+      timeout: 35000
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        // PiAPI retourne souvent un tableau avec 2 variantes
+        const track = data.data[0];
+        if (track.audio_url) {
+          return {
+            success: true,
+            audioUrl: track.audio_url
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.log('PiAPI error:', error.message);
+  }
+  
+  return { success: false };
+}
+
+// 🎵 OPTION 3: SunoAPI.org (Alternative)
+async function generateWithSunoOrg(prompt, style, duration) {
+  try {
+    const sunoPrompt = buildSunoPrompt(prompt, style);
+    
+    const response = await fetch('https://api.sunoapi.org/v1/music/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        prompt: `${style}, ${prompt}`,
-        duration: Math.min(duration, 30)
-      }),
-      timeout: 20000
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.audio || data.url) {
-        return {
-          success: true,
-          url: data.audio || data.url
-        };
-      }
-    }
-  } catch (error) {
-    console.log('Replicate error:', error.message);
-  }
-  
-  return { success: false };
-}
-
-// Tentative avec MusicAPI.ai
-async function tryMusicAPIService(prompt, style, duration) {
-  try {
-    const response = await fetch('https://api.musicapi.ai/v1/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': 'free-tier' // Clé publique pour tests
-      },
-      body: JSON.stringify({
-        text: `${style} style: ${prompt}`,
-        duration: Math.min(duration, 45)
+        description: sunoPrompt,
+        instrumental: style !== 'pop',
+        duration: Math.min(duration, 60) // Limité en gratuit
       }),
       timeout: 25000
     });
 
     if (response.ok) {
       const data = await response.json();
-      if (data.audio_url) {
+      
+      if (data.success && data.music_url) {
         return {
           success: true,
-          url: data.audio_url
+          audioUrl: data.music_url
         };
       }
     }
   } catch (error) {
-    console.log('MusicAPI error:', error.message);
+    console.log('SunoAPI.org error:', error.message);
   }
   
   return { success: false };
 }
 
-// Tentative avec Beatoven.ai
-async function tryBeatovenAPI(prompt, style, duration) {
-  try {
-    const response = await fetch('https://api.beatoven.ai/v1/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        mood: extractMood(prompt),
-        genre: style,
-        duration: Math.min(duration, 30),
-        tempo: extractTempo(prompt, style)
-      }),
-      timeout: 20000
-    });
+// Construire un prompt optimisé pour Suno
+function buildSunoPrompt(prompt, style) {
+  const styleDescriptions = {
+    electronic: 'electronic synthwave dark atmospheric 80s retro',
+    pop: 'catchy pop melody upbeat radio-friendly',
+    rock: 'powerful rock guitar-driven energetic',
+    jazz: 'smooth jazz sophisticated piano saxophone',
+    classical: 'orchestral classical strings emotional',
+    ambient: 'ambient atmospheric peaceful meditation'
+  };
+  
+  const styleDesc = styleDescriptions[style] || styleDescriptions.electronic;
+  
+  // Format optimisé pour Suno
+  return `${styleDesc}, ${prompt}`.toLowerCase();
+}
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.track_url || data.audio) {
-        return {
-          success: true,
-          url: data.track_url || data.audio
-        };
+// Attendre le résultat de MusicHero (si asynchrone)
+async function waitForMusicHeroResult(taskId, maxAttempts = 10) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Attendre 3s
+    
+    try {
+      const response = await fetch(`https://musichero.ai/api/suno/status/${taskId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.status === 'completed' && data.audio_url) {
+          return data.audio_url;
+        }
+        
+        if (data.status === 'failed') {
+          break;
+        }
       }
+    } catch (error) {
+      console.log(`Tentative ${attempt + 1} échouée`);
     }
-  } catch (error) {
-    console.log('Beatoven error:', error.message);
   }
   
-  return { success: false };
+  return null;
 }
 
-// Générer un échantillon audio de meilleure qualité (si toutes les APIs échouent)
-function generateHighQualityAudioSample(musicData) {
-  // Créer des données audio plus sophistiquées que les bips d'enfant
-  const sampleRate = 44100;
-  const durationSec = Math.min(musicData.duration, 10); // Max 10s pour la demo
-  const numSamples = sampleRate * durationSec;
-  
-  // Générer une vraie composition avec plusieurs instruments
-  const audioBuffer = new Float32Array(numSamples * 2); // Stéréo
-  
-  const tempo = musicData.bpm / 60; // Beats per second
-  const beatDuration = sampleRate / tempo;
-  
-  // Générer selon le style
-  for (let i = 0; i < numSamples; i++) {
-    const time = i / sampleRate;
-    const beat = Math.floor(i / beatDuration);
-    
-    let leftChannel = 0;
-    let rightChannel = 0;
-    
-    // Ligne de basse (fondamental)
-    const bassFreq = getBassFrequency(musicData.key, beat);
-    leftChannel += Math.sin(2 * Math.PI * bassFreq * time) * 0.3;
-    
-    // Mélodie principale
-    const melodyFreq = getMelodyFrequency(musicData.key, musicData.style, beat);
-    rightChannel += Math.sin(2 * Math.PI * melodyFreq * time) * 0.2;
-    
-    // Harmonies
-    const harmonyFreq = melodyFreq * 1.25; // Quinte
-    leftChannel += Math.sin(2 * Math.PI * harmonyFreq * time) * 0.15;
-    rightChannel += Math.sin(2 * Math.PI * harmonyFreq * time) * 0.15;
-    
-    // Percussion (kick sur les temps forts)
-    if (beat % 4 === 0) {
-      const kickEnvelope = Math.exp(-time * 50) * Math.sin(2 * Math.PI * 60 * time);
-      leftChannel += kickEnvelope * 0.4;
-      rightChannel += kickEnvelope * 0.4;
-    }
-    
-    // Appliquer l'enveloppe globale
-    const envelope = Math.min(1, time * 4) * Math.min(1, (durationSec - time) * 2);
-    
-    audioBuffer[i * 2] = leftChannel * envelope;     // Canal gauche
-    audioBuffer[i * 2 + 1] = rightChannel * envelope; // Canal droit
-  }
-  
-  // Convertir en WAV base64
-  return arrayBufferToBase64(audioBufferToWav(audioBuffer, sampleRate));
-}
-
-// Fonctions utilitaires pour la génération audio
-function getBassFrequency(key, beat) {
-  const bassNotes = {
-    'Am': [110, 123.47, 130.81, 146.83], // A, B, C, D
-    'C': [130.81, 146.83, 164.81, 174.61], // C, D, E, F
-    'Dm': [146.83, 164.81, 174.61, 196.00] // D, E, F, G
-  };
-  
-  const notes = bassNotes[key] || bassNotes['Am'];
-  return notes[beat % notes.length];
-}
-
-function getMelodyFrequency(key, style, beat) {
-  const baseFreq = key === 'C' ? 261.63 : key === 'Dm' ? 293.66 : 220.00;
-  
-  // Différentes progressions selon le style
-  const progressions = {
-    electronic: [1, 1.25, 1.5, 1.125],
-    pop: [1, 1.125, 1.25, 1],
-    rock: [1, 1.33, 1.5, 1.25],
-    ambient: [1, 1.2, 1.1, 1.15]
-  };
-  
-  const progression = progressions[style] || progressions.electronic;
-  return baseFreq * progression[beat % progression.length];
-}
-
-function extractMood(prompt) {
-  if (prompt.includes('dark') || prompt.includes('mysterious')) return 'dark';
-  if (prompt.includes('happy') || prompt.includes('upbeat')) return 'happy';
-  if (prompt.includes('sad') || prompt.includes('melancholic')) return 'sad';
-  if (prompt.includes('energetic') || prompt.includes('powerful')) return 'energetic';
-  return 'neutral';
-}
-
-function extractTempo(prompt, style) {
-  if (prompt.includes('slow')) return 70;
-  if (prompt.includes('fast')) return 140;
-  
-  const defaultTempos = {
-    electronic: 128,
-    pop: 120,
-    rock: 130,
-    jazz: 90,
-    ambient: 80
-  };
-  
-  return defaultTempos[style] || 120;
-}
-
-// Convertir audio buffer en WAV
-function audioBufferToWav(buffer, sampleRate) {
-  const length = buffer.length;
-  const arrayBuffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(arrayBuffer);
-  
-  // WAV header
-  const writeString = (offset, string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-  
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 2, true); // Stéréo
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 4, true);
-  view.setUint16(32, 4, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, length * 2, true);
-  
-  // Données audio
-  let offset = 44;
-  for (let i = 0; i < length; i++) {
-    const sample = Math.max(-1, Math.min(1, buffer[i]));
-    view.setInt16(offset, sample * 0x7FFF, true);
-    offset += 2;
-  }
-  
-  return arrayBuffer;
-}
-
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-// Garder vos fonctions existantes
+// Garder vos fonctions existantes...
 function generateAdvancedMusicData(prompt, style, duration) {
   const styles = {
     electronic: {
@@ -457,15 +322,11 @@ function generateAdvancedMusicData(prompt, style, duration) {
 
   const config = styles[style] || styles.electronic;
   
-  // Ajuster selon le prompt
   if (prompt.includes('fast') || prompt.includes('énergique')) {
     config.bpm += 20;
   }
   if (prompt.includes('slow') || prompt.includes('calme')) {
     config.bpm -= 15;
-  }
-  if (prompt.includes('70 BPM')) {
-    config.bpm = 70;
   }
 
   return {
